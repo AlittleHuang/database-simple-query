@@ -1,86 +1,39 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
-import lombok.Getter;
-
-import java.lang.reflect.Member;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
  * @param <X> The represented type that contains the attribute
  * @param <Y> The type of the represented attribute
  */
-@Getter
 public class Attribute<X, Y> {
 
-    public enum PersistentAttributeType {
-        /**
-         * Many-to-one association
-         */
-        MANY_TO_ONE,
+    final Field field;
+    final Method getter;
+    final Method setter;
 
-        /**
-         * One-to-one association
-         */
-        ONE_TO_ONE,
-
-        /**
-         * Basic attribute
-         */
-        BASIC,
-
-        /**
-         * Embeddable class attribute
-         */
-        EMBEDDED,
-
-        /**
-         * Many-to-many association
-         */
-        MANY_TO_MANY,
-
-        /**
-         * One-to-many association
-         */
-        ONE_TO_MANY,
-
-        /**
-         * Element collection
-         */
-        ELEMENT_COLLECTION
+    public Attribute(Field field, Method getter, Method setter) {
+        this.field = field;
+        this.getter = getter;
+        this.setter = setter;
     }
 
-    public enum PersistenceType {
-        /**
-         * Entity
-         */
-        ENTITY,
-
-        /**
-         * Embeddable class
-         */
-        EMBEDDABLE,
-
-        /**
-         * Mapped superclass
-         */
-        MAPPED_SUPERCLASS,
-
-        /**
-         * Basic type
-         */
-        BASIC
-    }
-
-    private String name;
-    private PersistentAttributeType persistentAttributeType;
-    private Class<Y> javaType;
-    private Member javaMember;
-    private boolean association;
-    private boolean collection;
-    private PersistenceType persistenceType;
-
-    public Attribute(Method getter) {
-        // TODO
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (field != null) {
+            T annotation = field.getAnnotation(annotationClass);
+            if (annotation != null) {
+                return annotation;
+            }
+        }
+        if (getter != null) {
+            T annotation = getter.getAnnotation(annotationClass);
+            if (annotation != null) {
+                return annotation;
+            }
+        }
+        return null;
     }
 
 }
