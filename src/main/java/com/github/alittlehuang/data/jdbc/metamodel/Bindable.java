@@ -1,11 +1,11 @@
-package com.github.alittlehuang.data.jdbc.jpasupport;
+package com.github.alittlehuang.data.jdbc.metamodel;
 
 import lombok.Getter;
 
 @Getter
 public class Bindable<T> {
 
-    public static enum BindableType {
+    public enum BindableType {
         /**
          * Single-valued attribute type
          */

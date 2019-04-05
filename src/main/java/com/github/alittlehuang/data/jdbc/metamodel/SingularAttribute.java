@@ -1,4 +1,4 @@
-package com.github.alittlehuang.data.jdbc.jpasupport;
+package com.github.alittlehuang.data.jdbc.metamodel;
 
 import lombok.Getter;
 import lombok.experimental.Delegate;
@@ -7,7 +7,7 @@ import javax.persistence.metamodel.Type;
 import java.lang.reflect.Method;
 
 @Getter
-public class SingularAttributeImpl<X, Y> extends Attribute<X, Y> {
+public class SingularAttribute<X, Y> extends Attribute<X, Y> {
 
     private boolean id;
     private boolean version;
@@ -17,7 +17,7 @@ public class SingularAttributeImpl<X, Y> extends Attribute<X, Y> {
     @Delegate
     private Bindable<Y> bindable;
 
-    public SingularAttributeImpl(Method getter) {
+    public SingularAttribute(Method getter) {
         super(getter);
         // TODO
     }

@@ -1,4 +1,4 @@
-package com.github.alittlehuang.data.jdbc.jpasupport;
+package com.github.alittlehuang.data.jdbc.metamodel;
 
 import lombok.Getter;
 
