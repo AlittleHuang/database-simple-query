@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.experimental.Delegate;
 
 import javax.persistence.metamodel.Type;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 @Getter
@@ -17,9 +18,8 @@ public class SingularAttribute<X, Y> extends Attribute<X, Y> {
     @Delegate
     private Bindable<Y> bindable;
 
-    public SingularAttribute(Method getter) {
-        super(getter);
-        // TODO
-    }
 
+    public SingularAttribute(Field field, Method getter, Method setter) {
+        super(field, getter, setter);
+    }
 }

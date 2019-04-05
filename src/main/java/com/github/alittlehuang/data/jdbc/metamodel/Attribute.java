@@ -1,7 +1,9 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
+import javax.persistence.Column;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
@@ -10,9 +12,9 @@ import java.lang.reflect.Method;
  */
 public class Attribute<X, Y> {
 
-    final Field field;
-    final Method getter;
-    final Method setter;
+    private final Field field;
+    private final Method getter;
+    private final Method setter;
 
     public Attribute(Field field, Method getter, Method setter) {
         this.field = field;
@@ -28,12 +30,67 @@ public class Attribute<X, Y> {
             }
         }
         if (getter != null) {
-            T annotation = getter.getAnnotation(annotationClass);
-            if (annotation != null) {
-                return annotation;
-            }
+            return getter.getAnnotation(annotationClass);
         }
         return null;
+    }
+
+    public void setValue(X entity, Y value) {
+        boolean accessible = field.isAccessible();
+        try {
+            if (setter != null) {
+                setter.invoke(entity, value);
+            } else {
+                if (!accessible) {
+                    field.setAccessible(true);
+                }
+                field.set(entity, value);
+                return;
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } finally {
+            field.setAccessible(accessible);
+        }
+        throw new RuntimeException();
+    }
+
+    public Y getValue(X entity) {
+        boolean accessible = field.isAccessible();
+        try {
+            if (getter != null) {
+                //noinspection unchecked
+                return (Y) getter.invoke(entity);
+            } else {
+                if (!accessible) {
+                    field.setAccessible(true);
+                }
+                //noinspection unchecked
+                return (Y) field.get(entity);
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        } finally {
+            field.setAccessible(accessible);
+        }
+        throw new RuntimeException();
+    }
+
+    public String getColumnName() {
+        Column column = getAnnotation(Column.class);
+        if (column != null && column.name().length() != 0) {
+            return column.name();
+        } else {
+            return toUnderline(field.getName());
+        }
+    }
+
+    /**
+     * 驼峰转下划线
+     */
+    private static String toUnderline(String str) {
+        if (str == null) return null;
+        return str.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
 }

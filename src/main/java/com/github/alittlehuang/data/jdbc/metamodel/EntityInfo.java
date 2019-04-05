@@ -6,18 +6,33 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class EntityInfo<T, ID> {
 
     private Class<T> javaType;
-    private Attribute<T, ID> idAttribute;
-    private List<Attribute<T, ?>> attributes = new ArrayList<>();
+    private final Attribute<T, ID> idAttribute;
+    private final List<Attribute<T, ?>> attributes;
 
     public EntityInfo(Class<T> javaType) {
+        this.attributes = initAttributes(javaType);
+        this.idAttribute = initIdAttribute();
+    }
+
+    public List<? extends Attribute<T, ?>> getAllAttributes() {
+        return attributes;
+    }
+
+    public Class<T> getJavaType() {
+        return javaType;
+    }
+
+    public Attribute<T, ID> getIdAttribute() {
+        return idAttribute;
+    }
+
+    private List<Attribute<T, ?>> initAttributes(Class<T> javaType) {
+        List<Attribute<T, ?>> attributes = new ArrayList<>();
         this.javaType = javaType;
         Field[] fields = javaType.getDeclaredFields();
         Map<Field, Method> readerMap = new HashMap<>();
@@ -48,6 +63,17 @@ public class EntityInfo<T, ID> {
             Attribute<T, ?> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field));
             attributes.add(attribute);
         }
+        return Collections.unmodifiableList(attributes);
+    }
+
+    private Attribute<T, ID> initIdAttribute() {
+        for (Attribute<T, ?> attribute : attributes) {
+            if (attribute.getAnnotation(Id.class) != null) {
+                //noinspection unchecked
+                return (Attribute<T, ID>) attribute;
+            }
+        }
+        return null;
     }
 
     private static Field getDeclaredField(Class<?> clazz, String name) {
@@ -60,26 +86,5 @@ public class EntityInfo<T, ID> {
             }
         }
         return null;
-    }
-
-    public List<? extends Attribute<T, ?>> getAttributes() {
-        return attributes;
-    }
-
-    public Class<T> getJavaType() {
-        return javaType;
-    }
-
-    public Attribute<T, ID> getIdAttribute() {
-        if (idAttribute == null) {
-            for (Attribute<T, ?> attribute : attributes) {
-                if (attribute.getAnnotation(Id.class) != null) {
-                    //noinspection unchecked
-                    idAttribute = (Attribute<T, ID>) attribute;
-                    break;
-                }
-            }
-        }
-        return idAttribute;
     }
 }
