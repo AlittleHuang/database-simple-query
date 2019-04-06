@@ -1,22 +1,42 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
+import org.springframework.util.Assert;
+
+import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EntityInfo<T, ID> {
+
+    private static final Map<Class<?>, EntityInfo<?, ?>> MAP = new ConcurrentHashMap<>();
 
     private Class<T> javaType;
     private final Attribute<T, ID> idAttribute;
     private final List<Attribute<T, ?>> attributes;
+    private final String tableName;
 
-    public EntityInfo(Class<T> javaType) {
+    private EntityInfo(Class<T> javaType) {
         this.attributes = initAttributes(javaType);
         this.idAttribute = initIdAttribute();
+        this.tableName = initTableName();
+    }
+
+    public static <X, Y> EntityInfo<X, Y> getInstance(Class<X> clazz) {
+        Assert.notNull(clazz.getAnnotation(Entity.class), "the calss must be a entity");
+        //noinspection unchecked
+        return (EntityInfo<X, Y>) MAP.computeIfAbsent(clazz, EntityInfo::new);
+    }
+
+    public String getTableName() {
+        return tableName;
     }
 
     public List<? extends Attribute<T, ?>> getAllAttributes() {
@@ -61,7 +81,9 @@ public class EntityInfo<T, ID> {
 
         for (Field field : writeMap.keySet()) {
             Attribute<T, ?> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field));
-            attributes.add(attribute);
+            if (attribute.getAnnotation(Transient.class) == null) {
+                attributes.add(attribute);
+            }
         }
         return Collections.unmodifiableList(attributes);
     }
@@ -74,6 +96,18 @@ public class EntityInfo<T, ID> {
             }
         }
         return null;
+    }
+
+    private String initTableName() {
+        Entity entity = javaType.getAnnotation(Entity.class);
+        if (entity != null && entity.name().length() > 0) {
+            return entity.name();
+        }
+        Table table = javaType.getAnnotation(Table.class);
+        if (table != null && table.name().length() > 0) {
+            return table.name();
+        }
+        return StringUtil.toUnderline(javaType.getSimpleName());
     }
 
     private static Field getDeclaredField(Class<?> clazz, String name) {

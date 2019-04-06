@@ -81,16 +81,8 @@ public class Attribute<X, Y> {
         if (column != null && column.name().length() != 0) {
             return column.name();
         } else {
-            return toUnderline(field.getName());
+            return StringUtil.toUnderline(field.getName());
         }
-    }
-
-    /**
-     * 驼峰转下划线
-     */
-    private static String toUnderline(String str) {
-        if (str == null) return null;
-        return str.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
 }
