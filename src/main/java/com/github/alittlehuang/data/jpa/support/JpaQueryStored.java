@@ -138,7 +138,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         }
     }
 
-    private class StoredData<R> {//中间值
+    private class StoredData<R> {
         final CriteriaBuilder cb;
         final CriteriaQuery<R> query;
         final Root<T> root;

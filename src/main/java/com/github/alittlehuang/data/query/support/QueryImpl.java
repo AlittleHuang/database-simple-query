@@ -21,7 +21,7 @@ public class QueryImpl<T> extends AbstractCriteriaBuilder<T, Query<T>> implement
     }
 
     public QueryImpl(AbstractQueryStored<T> stored) {
-        super();
+        super(stored.getJavaType());
         stored.criteria = getCriteria();
         this.stored = stored;
     }
@@ -71,5 +71,10 @@ public class QueryImpl<T> extends AbstractCriteriaBuilder<T, Query<T>> implement
     @Override
     public boolean exists() {
         return getStored().exists();
+    }
+
+    @Override
+    public Class<T> getJavaType() {
+        return getCriteria().getJavaType();
     }
 }

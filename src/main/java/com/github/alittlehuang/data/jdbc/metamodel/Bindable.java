@@ -2,6 +2,8 @@ package com.github.alittlehuang.data.jdbc.metamodel;
 
 import lombok.Getter;
 
+import java.lang.reflect.Member;
+
 @Getter
 public class Bindable<T> {
 
@@ -25,4 +27,6 @@ public class Bindable<T> {
     private BindableType bindableType;
     private Class<T> bindableJavaType;
 
+    public Bindable(Member member) {
+    }
 }

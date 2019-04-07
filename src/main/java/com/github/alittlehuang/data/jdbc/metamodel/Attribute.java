@@ -45,14 +45,12 @@ public class Attribute<X, Y> {
                     field.setAccessible(true);
                 }
                 field.set(entity, value);
-                return;
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         } finally {
             field.setAccessible(accessible);
         }
-        throw new RuntimeException();
     }
 
     public Y getValue(X entity) {
@@ -83,6 +81,10 @@ public class Attribute<X, Y> {
         } else {
             return StringUtil.toUnderline(field.getName());
         }
+    }
+
+    public String getFieldName() {
+        return field.getName();
     }
 
 }

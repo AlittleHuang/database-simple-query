@@ -26,13 +26,21 @@ public class SimpleCriteria<T> implements Criteria<T> {
     @Setter
     private Long maxResults;
 
-    public SimpleCriteria(SimpleWhereClause<T> whereClause) {
+    private Class javaType;
+
+    public SimpleCriteria(SimpleWhereClause<T> whereClause, Class<T> type) {
         this.whereClause = whereClause;
+        this.javaType = type;
     }
 
     @Override
     public LockModeType getLockModeType() {
         return null;
+    }
+
+    @Override
+    public Class<T> getJavaType() {
+        return javaType;
     }
 
     @Override

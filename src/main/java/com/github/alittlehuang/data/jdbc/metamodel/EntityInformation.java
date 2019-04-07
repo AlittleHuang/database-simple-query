@@ -1,7 +1,5 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
-import org.springframework.util.Assert;
-
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -13,33 +11,37 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class EntityInfo<T, ID> {
+public class EntityInformation<T, ID> {
 
-    private static final Map<Class<?>, EntityInfo<?, ?>> MAP = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, EntityInformation<?, ?>> MAP = new ConcurrentHashMap<>();
 
     private Class<T> javaType;
     private final Attribute<T, ID> idAttribute;
-    private final List<Attribute<T, ?>> attributes;
+    private final List<Attribute<T, Object>> attributes;
+    private final Map<String, Attribute<T, Object>> nameMap;
     private final String tableName;
 
-    private EntityInfo(Class<T> javaType) {
+    private EntityInformation(Class<T> javaType) {
         this.attributes = initAttributes(javaType);
         this.idAttribute = initIdAttribute();
         this.tableName = initTableName();
+        nameMap = attributes.stream().collect(Collectors.toMap(Attribute::getFieldName, Function.identity()));
     }
 
-    public static <X, Y> EntityInfo<X, Y> getInstance(Class<X> clazz) {
-        Assert.notNull(clazz.getAnnotation(Entity.class), "the calss must be a entity");
+    public static <X, Y> EntityInformation<X, Y> getInstance(Class<X> clazz) {
+        Objects.requireNonNull(clazz.getAnnotation(Entity.class), "the class must be a entity");
         //noinspection unchecked
-        return (EntityInfo<X, Y>) MAP.computeIfAbsent(clazz, EntityInfo::new);
+        return (EntityInformation<X, Y>) MAP.computeIfAbsent(clazz, EntityInformation::new);
     }
 
     public String getTableName() {
         return tableName;
     }
 
-    public List<? extends Attribute<T, ?>> getAllAttributes() {
+    public List<? extends Attribute<T, Object>> getAllAttributes() {
         return attributes;
     }
 
@@ -51,8 +53,8 @@ public class EntityInfo<T, ID> {
         return idAttribute;
     }
 
-    private List<Attribute<T, ?>> initAttributes(Class<T> javaType) {
-        List<Attribute<T, ?>> attributes = new ArrayList<>();
+    private List<Attribute<T, Object>> initAttributes(Class<T> javaType) {
+        List<Attribute<T, Object>> attributes = new ArrayList<>();
         this.javaType = javaType;
         Field[] fields = javaType.getDeclaredFields();
         Map<Field, Method> readerMap = new HashMap<>();
@@ -80,7 +82,7 @@ public class EntityInfo<T, ID> {
         }
 
         for (Field field : writeMap.keySet()) {
-            Attribute<T, ?> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field));
+            Attribute<T, Object> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field));
             if (attribute.getAnnotation(Transient.class) == null) {
                 attributes.add(attribute);
             }
@@ -120,5 +122,9 @@ public class EntityInfo<T, ID> {
             }
         }
         return null;
+    }
+
+    public Attribute<T, Object> getAttribute(String name) {
+        return nameMap.get(name);
     }
 }

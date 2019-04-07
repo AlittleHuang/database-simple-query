@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-class GetterMethodUtil {
+public class GetterMethodUtil {
 
     private final static Map<Class, Method> map = new HashMap<>();
 
@@ -48,7 +48,7 @@ class GetterMethodUtil {
         return method;
     }
 
-    private static String toAttrName(String getterName) {
+    public static String toAttrName(String getterName) {
         boolean check = getterName != null && getterName.length() > 3 && getterName.startsWith("get");
         Assert.state(check, "the function is not getters");
         StringBuilder builder = new StringBuilder(getterName.substring(3));
