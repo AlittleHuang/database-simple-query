@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
-    Logger logger = LoggerFactory.getLogger(getClass());
+    private static Logger logger = LoggerFactory.getLogger(JdbcQueryStored.class);
 
     private DataBasesConfig dataBasesConfig;
     private Class<T> entityType;
