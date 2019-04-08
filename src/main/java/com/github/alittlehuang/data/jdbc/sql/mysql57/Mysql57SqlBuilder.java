@@ -226,7 +226,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     appendSimpleExp(expression);
                     break;
                 case ABS:
-                    appendSingleArgFun(expression, "ABS");
+                    appendFunSingleArg(expression, "ABS");
                     break;
                 case SUM: {
                     appendSimpleExp(expression.getSubexpression());
@@ -239,21 +239,21 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     appendSimpleExp(expression.getSubexpression());
                     sql.append("*");
                     Object arg = expression.getArgs()[0];
-                    appendSubExp(arg);
+                    appendFunArgs(arg);
                     break;
                 }
                 case DIFF: {
                     appendSimpleExp(expression.getSubexpression());
                     sql.append("-");
                     Object arg = expression.getArgs()[0];
-                    appendSubExp(arg);
+                    appendFunArgs(arg);
                     break;
                 }
                 case QUOT: {
                     appendSimpleExp(expression.getSubexpression());
                     sql.append("/");
                     Object arg = expression.getArgs()[0];
-                    appendSubExp(arg);
+                    appendFunArgs(arg);
                     break;
                 }
                 case MOD:
@@ -261,7 +261,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     appendManyArgFun(expression, mod);
                     break;
                 case SQRT:
-                    appendSingleArgFun(expression, "SQRT");
+                    appendFunSingleArg(expression, "SQRT");
                     break;
                 case CONCAT:
                     String concat = "CONCAT";
@@ -271,16 +271,16 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     appendManyArgFun(expression, "SUBSTRING");
                     break;
                 case TRIM:
-                    appendSingleArgFun(expression, "TRIM");
+                    appendFunSingleArg(expression, "TRIM");
                     break;
                 case LOWER:
-                    appendSingleArgFun(expression, "LOWER");
+                    appendFunSingleArg(expression, "LOWER");
                     break;
                 case UPPER:
-                    appendSingleArgFun(expression, "UPPER");
+                    appendFunSingleArg(expression, "UPPER");
                     break;
                 case LENGTH:
-                    appendSingleArgFun(expression, "UPPER");
+                    appendFunSingleArg(expression, "UPPER");
                     break;
                 case LOCATE:
                     sql.append("LOCATE").append("(");
@@ -307,13 +307,13 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             sql.append(")");
         }
 
-        private void appendSingleArgFun(Expression<T> expression, String funStr) {
+        private void appendFunSingleArg(Expression<T> expression, String funStr) {
             sql.append(funStr).append("(");
             appendExp(expression.getSubexpression());
             sql.append(")");
         }
 
-        private void appendSubExp(Object arg) {
+        private void appendFunArgs(Object arg) {
             if ( arg instanceof Expression ) {
                 //noinspection unchecked
                 Expression<T> ex = (Expression<T>) arg;
