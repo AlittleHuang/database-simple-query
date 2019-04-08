@@ -1,5 +1,6 @@
 package com.github.alittlehuang.data.jdbc.support;
 
+import com.alibaba.fastjson.util.TypeUtils;
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
@@ -8,12 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
     Logger logger = LoggerFactory.getLogger(getClass());
@@ -40,6 +43,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
     private List<T> toList(ResultSet resultSet) throws SQLException {
         List<T> results = new ArrayList<>();
         List<? extends Attribute<T, Object>> allAttributes = EntityInformation.getInstance(entityType).getAllAttributes();
+        boolean fistRow = true;
         while ( resultSet.next() ) {
             T entity;
             try {
@@ -50,8 +54,31 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             results.add(entity);
             int index = 0;
             for ( Attribute<T, Object> attribute : allAttributes ) {
-                attribute.setValue(entity, resultSet.getObject(++index));
+                Object val = resultSet.getObject(++index);
+                Class<Object> fieldType = attribute.getFieldType();
+                if ( val != null ) {
+                    Class<?> valType = val.getClass();
+                    if ( !fieldType.isAssignableFrom(valType) ) {
+                        Function<Object, Object> function = dataBasesConfig.getTypeConverterSet().get(valType, fieldType);
+                        if ( function != null ) {
+                            val = function.apply(val);
+                        } else {
+                            Class<T> entityType = attribute.getEntityType();
+                            EntityInformation<T, Object> information = EntityInformation.getInstance(entityType);
+                            Field field = attribute.getField();
+                            if ( fistRow && logger.isWarnEnabled() ) {
+                                logger.warn("the type " + information.getTableName() + "." + attribute.getColumnName() +
+                                        " in the database does not match " + field.getDeclaringClass().getTypeName() + "."
+                                        + field.getName());
+                            }
+                            // logger.warn("missing converter from" + valType + " to " + fieldType);
+                            val = TypeUtils.cast(val, fieldType, null);
+                        }
+                    }
+                }
+                attribute.setValue(entity, val);
             }
+            fistRow = false;
         }
         return results;
     }
@@ -100,14 +127,19 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     private ResultSet getResultSet(Connection connection, SqlBuilder.PrecompiledSql precompiledSql) {
         String sql = precompiledSql.getSql();
-        logger.debug(sql);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
             int i = 0;
-            for ( Object arg : precompiledSql.getArgs() ) {
+            List<Object> args = precompiledSql.getArgs();
+            for ( Object arg : args ) {
                 preparedStatement.setObject(++i, arg);
             }
-            logger.debug(preparedStatement.toString());
+
+            if ( logger.isDebugEnabled() ) {
+                logger.debug("prepared sql: " + sql);
+                logger.debug(args.toString());
+            }
+
             return preparedStatement.executeQuery();
         } catch ( SQLException e ) {
             throw new RuntimeException(e);

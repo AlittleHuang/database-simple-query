@@ -12,8 +12,6 @@ import javax.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Mysql57SqlBuilder implements SqlBuilder {
 
@@ -48,7 +46,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
 
-        StringBuilder sql = new StringBuilder();
+        StringBuilder sql;
 
         public Builder(Criteria<T> criteria) {
             this.criteria = criteria;
@@ -57,22 +55,32 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         SqlBuilder.PrecompiledSql buildListResult() {
-            sql.append(selectFrom());
-            appendWhere();
+            sql = new StringBuilder();
+            appendSelectFromEntity();
+            appendWhereClause();
             return toPrecompiledSql();
         }
 
-        private void appendWhere() {
-            if ( !whereClause.isCompound() || !whereClause.getCompoundItems().isEmpty() ) {
+        private void appendWhereClause() {
+            if ( whereClause == null || !whereClause.isCompound() || !whereClause.getCompoundItems().isEmpty() ) {
                 sql.append(" WHERE ");
-                appendWhere(whereClause);
+                appendWhereClause(whereClause);
             }
         }
 
         SqlBuilder.PrecompiledSql buildCount() {
-            sql.append("SELECT COUNT(1) FROM `").append(entityInfo.getTableName()).append('`');
-            appendWhere();
+            sql = new StringBuilder();
+            sql.append("SELECT COUNT(1) ");
+            appendFrom(entityInfo);
+            appendWhereClause();
             return toPrecompiledSql();
+        }
+
+        private void appendFrom(EntityInformation entityInfo) {
+            sql.append("FROM `")
+                    .append(entityInfo.getTableName())
+                    .append("` ");
+            appendTableAlias(entityInfo);
         }
 
         private PrecompiledSql toPrecompiledSql() {
@@ -90,80 +98,85 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
 
-        private static final Map<Class, String> SELECT_FROM_CLASS_SQL = new ConcurrentHashMap<>();
-
-        private String selectFrom() {
+        private void appendSelectFromEntity() {
             Class<?> clazz = criteria.getJavaType();
-            return SELECT_FROM_CLASS_SQL.computeIfAbsent(clazz, javaType -> {
-                StringBuilder builder = new StringBuilder("SELECT");
-                EntityInformation<?, ?> entityInformation = EntityInformation.getInstance(clazz);
+            sql.append("SELECT");
+            EntityInformation<?, ?> entityInformation = EntityInformation.getInstance(clazz);
 
-                boolean first = true;
-                for ( Attribute<?, ?> attribute : entityInformation.getAllAttributes() ) {
-                    if ( first ) {
-                        builder.append(" ");
-                        first = false;
-                    } else {
-                        builder.append(",");
-                    }
-                    builder.append("`").append(attribute.getColumnName()).append("`");
+            boolean first = true;
+            for ( Attribute<?, ?> attribute : entityInformation.getAllAttributes() ) {
+                if ( first ) {
+                    sql.append(" ");
+                    first = false;
+                } else {
+                    sql.append(",");
                 }
-                builder.append(" FROM ")
-                        .append("`")
-                        .append(entityInformation.getTableName())
-                        .append("`");
-
-                return builder.toString();
-            });
-
+                appendColumnName(sql, attribute);
+            }
+            sql.append(" ");
+            appendFrom(entityInfo);
         }
 
-        private void appendWhere(WhereClause<T> whereClause) {
+        private void appendColumnName(StringBuilder sql, Attribute<?, ?> attribute) {
+            EntityInformation<?, Object> entityInformation = EntityInformation.getInstance(attribute.getEntityType());
+            appendTableAlias(entityInformation);
+            sql.append(".`").append(attribute.getColumnName()).append("`");
+        }
+
+        private void appendTableAlias(EntityInformation entityInformation) {
+            sql.append("`").append(entityInformation.getTableName()).append("_").append("`");
+        }
+
+        private void appendColumnName(Attribute<?, ?> attribute) {
+            appendColumnName(sql, attribute);
+        }
+
+        private void appendWhereClause(WhereClause<T> whereClause) {
             if ( whereClause.isCompound() ) {
-                recursiveBuild(whereClause);
+                appendCompoundWhereClause(whereClause);
             } else {
-                buildListResult(whereClause);
+                appendNonCompoundWhereClause(whereClause);
             }
         }
 
-        private void buildListResult(WhereClause<T> item) {
+        private void appendNonCompoundWhereClause(WhereClause<T> item) {
             Expression<T> expression = item.getExpression();
             if ( item.isNegate() ) {
                 sql.append("NOT ");
             }
-            appendExp(expression);
+            appendExpression(expression);
             switch ( item.getConditionalOperator() ) {
                 case EQUAL:
-                    appendParameter(item, "=");
+                    appendComparisonOperatorExpression(item, "=");
                     break;
                 case GREATER_THAN:
-                    appendParameter(item, ">");
+                    appendComparisonOperatorExpression(item, ">");
                     break;
                 case LESS_THAN:
-                    appendParameter(item, "<");
+                    appendComparisonOperatorExpression(item, "<");
                     break;
                 case GREATER_THAN_OR_EQUAL_TO:
-                    appendParameter(item, ">=");
+                    appendComparisonOperatorExpression(item, ">=");
                     break;
                 case LESS_THAN_OR_EQUAL_TO:
-                    appendParameter(item, "<=");
+                    appendComparisonOperatorExpression(item, "<=");
                     break;
                 case BETWEEN: {
                     Iterator<?> iterator = ( (Iterable<?>) item.getParameter() ).iterator();
                     sql.append(" BETWEEN ");
-                    appendSingleParam(iterator.next());
+                    appendSimpleParam(iterator.next());
                     sql.append(" AND ");
-                    appendSingleParam(iterator.next());
+                    appendSimpleParam(iterator.next());
                     break;
                 }
                 case IN: {
                     sql.append(" IN(");
-                    appendParameter(item.getParameter());
+                    appendSqlParameter(item.getParameter());
                     sql.append(")");
                     break;
                 }
                 case LIKE:
-                    appendParameter(item, " LIKE ");
+                    appendComparisonOperatorExpression(item, " LIKE ");
                     break;
                 case IS_NULL:
                     sql.append(" IS NULL");
@@ -172,16 +185,16 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
         }
 
-        private void appendParameter(WhereClause<T> item, String operator) {
+        private void appendComparisonOperatorExpression(WhereClause<T> item, String operator) {//比较运算符
             Object parameter = item.getParameter();
             sql.append(operator);
-            appendParameter(parameter);
+            appendSqlParameter(parameter);
         }
 
-        private void appendParameter(Object parameter) {
+        private void appendSqlParameter(Object parameter) {
             if ( parameter instanceof Expression ) {
                 //noinspection unchecked
-                appendExp((Expression<T>) parameter);
+                appendExpression((Expression<T>) parameter);
             } else if ( parameter instanceof Iterable ) {
                 boolean fist = true;
                 for ( Object arg : ( (Iterable<?>) parameter ) ) {
@@ -190,14 +203,14 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     } else {
                         sql.append(',');
                     }
-                    appendSingleParam(arg);
+                    appendSimpleParam(arg);
                 }
             } else {
-                appendSingleParam(parameter);
+                appendSimpleParam(parameter);
             }
         }
 
-        private void appendSingleParam(Object arg) {
+        private void appendSimpleParam(Object arg) {
             if ( arg instanceof Number ) {
                 sql.append(arg);
             } else {
@@ -214,43 +227,43 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 } else {
                     sql.append(",");
                 }
-                appendParameter(o);
+                appendSqlParameter(o);
             }
         }
 
-        private void appendExp(Expression<T> expression) {
+        private void appendExpression(Expression<T> expression) {
             Expression.Function function = expression.getFunction();
             function = function == null ? Expression.Function.NONE : function;
             switch ( function ) {
                 case NONE:
-                    appendSimpleExp(expression);
+                    appendComputation(expression);
                     break;
                 case ABS:
-                    appendFunSingleArg(expression, "ABS");
+                    appendSingleParameterFunction(expression, "ABS");
                     break;
                 case SUM: {
-                    appendSimpleExp(expression.getSubexpression());
+                    appendComputation(expression.getSubexpression());
                     sql.append("+");
                     Object arg = expression.getArgs()[0];
-                    appendParameter(arg);
+                    appendSqlParameter(arg);
                     break;
                 }
                 case PROD: {
-                    appendSimpleExp(expression.getSubexpression());
+                    appendComputation(expression.getSubexpression());
                     sql.append("*");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case DIFF: {
-                    appendSimpleExp(expression.getSubexpression());
+                    appendComputation(expression.getSubexpression());
                     sql.append("-");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case QUOT: {
-                    appendSimpleExp(expression.getSubexpression());
+                    appendComputation(expression.getSubexpression());
                     sql.append("/");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
@@ -258,58 +271,58 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 }
                 case MOD:
                     String mod = "MOD";
-                    appendManyArgFun(expression, mod);
+                    appendMultiParameterFunction(expression, mod);
                     break;
                 case SQRT:
-                    appendFunSingleArg(expression, "SQRT");
+                    appendSingleParameterFunction(expression, "SQRT");
                     break;
                 case CONCAT:
                     String concat = "CONCAT";
-                    appendManyArgFun(expression, concat);
+                    appendMultiParameterFunction(expression, concat);
                     break;
                 case SUBSTRING:
-                    appendManyArgFun(expression, "SUBSTRING");
+                    appendMultiParameterFunction(expression, "SUBSTRING");
                     break;
                 case TRIM:
-                    appendFunSingleArg(expression, "TRIM");
+                    appendSingleParameterFunction(expression, "TRIM");
                     break;
                 case LOWER:
-                    appendFunSingleArg(expression, "LOWER");
+                    appendSingleParameterFunction(expression, "LOWER");
                     break;
                 case UPPER:
-                    appendFunSingleArg(expression, "UPPER");
+                    appendSingleParameterFunction(expression, "UPPER");
                     break;
                 case LENGTH:
-                    appendFunSingleArg(expression, "UPPER");
+                    appendSingleParameterFunction(expression, "UPPER");
                     break;
                 case LOCATE:
                     sql.append("LOCATE").append("(");
                     appendFunArg(expression.getArgs());
                     sql.append(",");
-                    appendSimpleExp(expression.getSubexpression());
+                    appendComputation(expression.getSubexpression());
                     sql.append(")");
                     break;
                 case COALESCE:
-                    appendManyArgFun(expression, "IFNULL");
+                    appendMultiParameterFunction(expression, "IFNULL");
                     break;
                 case NULLIF:
-                    appendManyArgFun(expression, "NULLIF");
+                    appendMultiParameterFunction(expression, "NULLIF");
                     break;
             }
 
         }
 
-        private void appendManyArgFun(Expression<T> expression, String funName) {
-            sql.append(funName).append("(");
-            appendSimpleExp(expression.getSubexpression());
+        private void appendMultiParameterFunction(Expression<T> expression, String funStr) {
+            sql.append(funStr).append("(");
+            appendComputation(expression.getSubexpression());
             sql.append(",");
             appendFunArg(expression.getArgs());
             sql.append(")");
         }
 
-        private void appendFunSingleArg(Expression<T> expression, String funStr) {
+        private void appendSingleParameterFunction(Expression<T> expression, String funStr) {
             sql.append(funStr).append("(");
-            appendExp(expression.getSubexpression());
+            appendExpression(expression.getSubexpression());
             sql.append(")");
         }
 
@@ -322,34 +335,35 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 if ( lowPriority ) {
                     sql.append("(");
                 }
-                appendExp(ex);
+                appendExpression(ex);
                 if ( lowPriority ) {
                     sql.append(")");
                 }
             } else {
-                appendParameter(arg);
+                appendSqlParameter(arg);
             }
         }
 
-        private void appendSimpleExp(Expression<T> expression) {
+        private void appendComputation(Expression<T> expression) {
             String[] names = expression.getNames(entityInfo.getJavaType());
             Attribute<T, Object> attribute = entityInfo.getAttribute(names[0]);
-            sql.append(attribute.getColumnName());
+            appendColumnName(attribute);
             if ( names.length != 1 ) {
                 for ( int i = 1; i < names.length; i++ ) {
                     EntityInformation<Object, Object> info = EntityInformation.getInstance(attribute.getFieldType());
-                    sql.append(".").append(info.getAttribute(names[i]).getColumnName());
+                    sql.append(".");
+                    appendColumnName(info.getAttribute(names[i]));
                 }
             }
         }
 
-        private void recursiveBuild(WhereClause<T> whereClause) {
+        private void appendCompoundWhereClause(WhereClause<T> whereClause) {
 
             int appendIndex = sql.length();
 
             List<? extends WhereClause<T>> items = whereClause.getCompoundItems();
             if ( items.size() == 1 ) {
-                buildListResult(items.get(0));
+                appendNonCompoundWhereClause(items.get(0));
             } else if ( !items.isEmpty() ) {
                 boolean fist = true;
                 Predicate.BooleanOperator pre = null;
@@ -368,7 +382,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     if ( compound ) {
                         sql.append("(");
                     }
-                    appendWhere(item);
+                    appendWhereClause(item);
 
                     if ( compound ) {
                         sql.append(")");

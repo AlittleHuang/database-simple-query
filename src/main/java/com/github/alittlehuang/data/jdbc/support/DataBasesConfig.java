@@ -37,15 +37,15 @@ public class DataBasesConfig {
 
     class TypeConverterSet {
 
-        private Map<JointKey, Function<?, ?>> map = new ConcurrentHashMap<>();
+        private Map<JointKey, Function<Object, Object>> map = new ConcurrentHashMap<>();
 
         public <T, U> void put(Class<T> srcType, Class<U> targetType, Function<T, U> converter) {
-            map.put(new JointKey(srcType, targetType), converter);
+            //noinspection unchecked
+            map.put(new JointKey(srcType, targetType), (Function<Object, Object>) converter);
         }
 
-        public <T, U> Function<T, U> get(Class<T> srcType, Class<U> targetType) {
-            //noinspection unchecked
-            return (Function<T, U>) map.get(new JointKey(srcType, targetType));
+        public Function<Object, Object> get(Class<?> srcType, Class<?> targetType) {
+            return map.get(new JointKey(srcType, targetType));
         }
 
     }

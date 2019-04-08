@@ -97,4 +97,8 @@ public class Attribute<X, Y> {
     public Class<X> getEntityType() {
         return entityType;
     }
+
+    public Field getField() {
+        return field;
+    }
 }
