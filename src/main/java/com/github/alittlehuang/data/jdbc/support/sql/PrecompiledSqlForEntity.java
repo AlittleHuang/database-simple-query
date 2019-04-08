@@ -1,4 +1,4 @@
-package com.github.alittlehuang.data.jdbc.sql;
+package com.github.alittlehuang.data.jdbc.support.sql;
 
 import java.util.List;
 

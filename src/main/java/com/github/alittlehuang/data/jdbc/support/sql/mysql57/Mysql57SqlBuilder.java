@@ -1,11 +1,11 @@
-package com.github.alittlehuang.data.jdbc.sql.mysql57;
+package com.github.alittlehuang.data.jdbc.support.sql.mysql57;
 
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
-import com.github.alittlehuang.data.jdbc.sql.PrecompiledSql;
-import com.github.alittlehuang.data.jdbc.sql.PrecompiledSqlForEntity;
-import com.github.alittlehuang.data.jdbc.sql.SelectedAttrbute;
-import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
+import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttrbute;
+import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
 import com.github.alittlehuang.data.query.specification.Criteria;
 import com.github.alittlehuang.data.query.specification.Expression;
 import com.github.alittlehuang.data.query.specification.Selection;
