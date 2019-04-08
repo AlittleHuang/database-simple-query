@@ -15,11 +15,13 @@ public class Attribute<X, Y> {
     private final Field field;
     private final Method getter;
     private final Method setter;
+    private final Class<X> entityType;
 
-    public Attribute(Field field, Method getter, Method setter) {
+    public Attribute(Field field, Method getter, Method setter, Class<X> entityType) {
         this.field = field;
         this.getter = getter;
         this.setter = setter;
+        this.entityType = entityType;
     }
 
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
@@ -87,4 +89,12 @@ public class Attribute<X, Y> {
         return field.getName();
     }
 
+    public Class<Y> getFieldType() {
+        //noinspection unchecked
+        return (Class<Y>) field.getType();
+    }
+
+    public Class<X> getEntityType() {
+        return entityType;
+    }
 }

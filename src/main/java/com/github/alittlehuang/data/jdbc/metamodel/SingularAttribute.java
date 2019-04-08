@@ -18,8 +18,7 @@ public class SingularAttribute<X, Y> extends Attribute<X, Y> {
     @Delegate
     private Bindable<Y> bindable;
 
-
-    public SingularAttribute(Field field, Method getter, Method setter) {
-        super(field, getter, setter);
+    public SingularAttribute(Field field, Method getter, Method setter, Class<X> entityType) {
+        super(field, getter, setter, entityType);
     }
 }

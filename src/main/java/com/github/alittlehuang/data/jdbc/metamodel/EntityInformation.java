@@ -82,7 +82,7 @@ public class EntityInformation<T, ID> {
         }
 
         for (Field field : writeMap.keySet()) {
-            Attribute<T, Object> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field));
+            Attribute<T, Object> attribute = new Attribute<>(field, readerMap.get(field), writeMap.get(field), javaType);
             if (attribute.getAnnotation(Transient.class) == null) {
                 attributes.add(attribute);
             }
