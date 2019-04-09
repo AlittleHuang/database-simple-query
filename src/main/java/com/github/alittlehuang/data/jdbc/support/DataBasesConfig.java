@@ -1,6 +1,6 @@
 package com.github.alittlehuang.data.jdbc.support;
 
-import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
 import com.github.alittlehuang.data.util.JointKey;
 import lombok.Data;
 import lombok.Getter;

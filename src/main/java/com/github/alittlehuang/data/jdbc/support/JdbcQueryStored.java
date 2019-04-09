@@ -3,7 +3,7 @@ package com.github.alittlehuang.data.jdbc.support;
 import com.alibaba.fastjson.util.TypeUtils;
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
-import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
 import com.github.alittlehuang.data.query.support.AbstractQueryStored;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
-    Logger logger = LoggerFactory.getLogger(getClass());
+    private static Logger logger = LoggerFactory.getLogger(JdbcQueryStored.class);
 
     private DataBasesConfig dataBasesConfig;
     private Class<T> entityType;
@@ -31,7 +31,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public List<T> getResultList() {
-        SqlBuilder.PrecompiledSql count = dataBasesConfig.getSqlBuilder().listResult(getCriteria());
+        PrecompiledSql count = dataBasesConfig.getSqlBuilder().listResult(getCriteria());
         try ( Connection connection = dataBasesConfig.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, count);
             return toList(resultSet);
@@ -100,7 +100,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public long count() {
-        SqlBuilder.PrecompiledSql count = dataBasesConfig.getSqlBuilder().count(getCriteria());
+        PrecompiledSql count = dataBasesConfig.getSqlBuilder().count(getCriteria());
 
         try ( Connection connection = dataBasesConfig.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, count);
@@ -125,7 +125,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
         return entityType;
     }
 
-    private ResultSet getResultSet(Connection connection, SqlBuilder.PrecompiledSql precompiledSql) {
+    private ResultSet getResultSet(Connection connection, PrecompiledSql precompiledSql) {
         String sql = precompiledSql.getSql();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(sql);

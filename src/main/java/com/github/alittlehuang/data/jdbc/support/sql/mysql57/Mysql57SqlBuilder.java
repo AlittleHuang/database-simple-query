@@ -1,8 +1,11 @@
-package com.github.alittlehuang.data.jdbc.sql.mysql57;
+package com.github.alittlehuang.data.jdbc.support.sql.mysql57;
 
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
-import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
+import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttrbute;
+import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
 import com.github.alittlehuang.data.query.specification.Criteria;
 import com.github.alittlehuang.data.query.specification.Expression;
 import com.github.alittlehuang.data.query.specification.Selection;
@@ -16,22 +19,22 @@ import java.util.List;
 public class Mysql57SqlBuilder implements SqlBuilder {
 
     @Override
-    public SqlBuilder.PrecompiledSql count(Criteria<?> criteria) {
+    public PrecompiledSql count(Criteria<?> criteria) {
         return new Builder<>(criteria).buildCount();
     }
 
     @Override
-    public SqlBuilder.PrecompiledSql exists(Criteria<?> criteria) {
+    public PrecompiledSql exists(Criteria<?> criteria) {
         return null;
     }
 
     @Override
-    public SqlBuilder.PrecompiledSql listResult(Criteria<?> criteria) {
+    public PrecompiledSqlForEntity listResult(Criteria<?> criteria) {
         return new Builder<>(criteria).buildListResult();
     }
 
     @Override
-    public SqlBuilder.PrecompiledSql ListObjects(Criteria<?> criteria) {
+    public PrecompiledSql ListObjects(Criteria<?> criteria) {
         List<? extends Selection<?>> selections = criteria.getSelections();
         if ( selections == null || selections.isEmpty() ) {
             throw new RuntimeException("the selections must not be empty");
@@ -45,20 +48,21 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         EntityInformation<T, ?> entityInfo;
         WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
+        List<SelectedAttrbute> selectedAttrbutes;
 
         StringBuilder sql;
 
-        public Builder(Criteria<T> criteria) {
+        Builder(Criteria<T> criteria) {
             this.criteria = criteria;
             entityInfo = EntityInformation.getInstance(criteria.getJavaType());
             whereClause = criteria.getWhereClause();
         }
 
-        SqlBuilder.PrecompiledSql buildListResult() {
+        PrecompiledSqlForEntity buildListResult() {
             sql = new StringBuilder();
             appendSelectFromEntity();
             appendWhereClause();
-            return toPrecompiledSql();
+            return new PrecompiledSqlForEntityImpl();
         }
 
         private void appendWhereClause() {
@@ -68,12 +72,12 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
         }
 
-        SqlBuilder.PrecompiledSql buildCount() {
+        PrecompiledSql buildCount() {
             sql = new StringBuilder();
             sql.append("SELECT COUNT(1) ");
             appendFrom(entityInfo);
             appendWhereClause();
-            return toPrecompiledSql();
+            return new PrecompiledSqlImpl();
         }
 
         private void appendFrom(EntityInformation entityInfo) {
@@ -82,21 +86,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     .append("` ");
             appendTableAlias(entityInfo);
         }
-
-        private PrecompiledSql toPrecompiledSql() {
-            return new PrecompiledSql() {
-                @Override
-                public String getSql() {
-                    return sql.toString();
-                }
-
-                @Override
-                public List<Object> getArgs() {
-                    return args;
-                }
-            };
-        }
-
 
         private void appendSelectFromEntity() {
             Class<?> clazz = criteria.getJavaType();
@@ -388,6 +377,26 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                         sql.append(")");
                     }
                 }
+            }
+        }
+
+        private class PrecompiledSqlImpl implements PrecompiledSql {
+            @Override
+            public String getSql() {
+                return sql.toString();
+            }
+
+            @Override
+            public List<Object> getArgs() {
+                return args;
+            }
+        }
+
+        private class PrecompiledSqlForEntityImpl extends PrecompiledSqlImpl implements PrecompiledSqlForEntity {
+
+            @Override
+            public List<SelectedAttrbute> getSelections() {
+                return selectedAttrbutes;
             }
         }
 
