@@ -5,7 +5,7 @@ import java.util.List;
 public class PrecompiledSql {
 
     private String sql;
-    List<Object> args;
+    private List<Object> args;
 
     public PrecompiledSql(String sql, List<Object> args) {
         this.sql = sql;

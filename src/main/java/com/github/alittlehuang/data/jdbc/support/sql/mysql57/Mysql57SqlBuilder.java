@@ -6,12 +6,8 @@ import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
 import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
 import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
-import com.github.alittlehuang.data.query.specification.Criteria;
-import com.github.alittlehuang.data.query.specification.Expression;
-import com.github.alittlehuang.data.query.specification.Selection;
-import com.github.alittlehuang.data.query.specification.WhereClause;
+import com.github.alittlehuang.data.query.specification.*;
 import com.github.alittlehuang.data.util.JointKey;
-import lombok.EqualsAndHashCode;
 
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
@@ -44,41 +40,19 @@ public class Mysql57SqlBuilder implements SqlBuilder {
     }
 
     private static class Builder<T> {
-
+        Criteria<T> criteria;
         EntityInformation<T, ?> rootEntityInfo;
         WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
         List<SelectedAttribute<T, Object>> selectedAttributes;
         Map<JointKey, JoinAttr> joinAttrs;
 
-        @EqualsAndHashCode
-        class JoinAttr {
-            Attribute<?, ?> attribute;
-            EntityInformation attrInfo;
-            JoinAttr parent;
-            JoinType joinType = JoinType.LEFT;
-            boolean appended = false;
-            int index = joinAttrs.size();
-
-            public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute) {
-                this.parent = parent;
-                this.attribute = attribute;
-                this.attrInfo = EntityInformation.getInstance(attribute.getFieldType());
-            }
-
-            void appendAlias(StringBuilder sql) {
-                sql.append('`').append(attrInfo.getTableName())
-                        .append('_')
-                        .append(index)
-                        .append('`');
-            }
-        }
-
         StringBuilder sql;
 
         Builder(Criteria<T> criteria) {
             rootEntityInfo = EntityInformation.getInstance(criteria.getJavaType());
             whereClause = criteria.getWhereClause();
+            this.criteria = criteria;
         }
 
         PrecompiledSqlForEntity<T> buildListResult() {
@@ -155,9 +129,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
         private void appendSelectFromEntity() {
             selectedAttributes = new ArrayList<>();
-
             sql.append("SELECT");
-
             boolean first = true;
             for ( Attribute<T, Object> attribute : rootEntityInfo.getBasicAttributes() ) {
                 if ( first ) {
@@ -171,6 +143,17 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 appendColumnName(attribute);
                 selectedAttributes.add(new SelectedAttribute<>(attribute));
             }
+            List<? extends FetchAttribute<T>> fetchs = criteria.getFetchAttributes();
+            if (fetchs != null && !fetchs.isEmpty()) {
+                for (FetchAttribute<T> fetch : fetchs) {
+
+                    // TODO
+                    String[] names = fetch.getNames(rootEntityInfo.getJavaType());
+                    sql.append(",");
+                    appendComputation(fetch);
+                }
+            }
+
             sql.append(" ");
             appendFrom(rootEntityInfo);
         }
@@ -400,7 +383,11 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
         }
 
-        private void appendComputation(Expression<T> expression) {
+        private void appendComputation(com.github.alittlehuang.data.query.specification.Attribute<T> expression) {
+            appendComputation(expression, JoinType.LEFT);
+        }
+
+        private void appendComputation(com.github.alittlehuang.data.query.specification.Attribute<T> expression, JoinType joinType) {
             String[] names = expression.getNames(rootEntityInfo.getJavaType());
             Attribute<?, ?> attribute = rootEntityInfo.getAttribute(names[0]);
             if ( names.length > 1 ) {
@@ -409,7 +396,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 for ( int i = 1; i < names.length; i++ ) {
                     JointKey key = new JointKey(joinAttr, attribute);
                     if ( !joinAttrs.containsKey(key) ) {
-                        joinAttrs.put(key, new JoinAttr(joinAttr, attribute));
+                        joinAttrs.put(key, new JoinAttr(joinAttr, attribute, joinType));
                     }
                     joinAttr = joinAttrs.get(key);
 
@@ -461,5 +448,27 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
         }
 
+        class JoinAttr {
+            Attribute<?, ?> attribute;
+            EntityInformation attrInfo;
+            JoinAttr parent;
+            JoinType joinType;
+            boolean appended = false;
+            int index = joinAttrs.size();
+
+            public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute, JoinType joinType) {
+                this.parent = parent;
+                this.attribute = attribute;
+                this.attrInfo = EntityInformation.getInstance(attribute.getFieldType());
+                this.joinType = joinType;
+            }
+
+            void appendAlias(StringBuilder sql) {
+                sql.append('`').append(attrInfo.getTableName())
+                        .append('_')
+                        .append(index)
+                        .append('`');
+            }
+        }
     }
 }
