@@ -303,7 +303,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     sql.append(")");
                     break;
                 case COALESCE:
-                    appendMultiParameterFunction(expression, "IFNULL");
+                    appendMultiParameterFunction(expression, "COALESCE");
                     break;
                 case NULLIF:
                     appendMultiParameterFunction(expression, "NULLIF");
