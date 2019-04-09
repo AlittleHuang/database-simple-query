@@ -2,10 +2,22 @@ package com.github.alittlehuang.data.jdbc.support.sql;
 
 import java.util.List;
 
-public interface PrecompiledSql {
+public class PrecompiledSql {
 
-    String getSql();
+    private String sql;
+    List<Object> args;
 
-    List<Object> getArgs();
+    public PrecompiledSql(String sql, List<Object> args) {
+        this.sql = sql;
+        this.args = args;
+    }
+
+    public String getSql(){
+        return sql;
+    }
+
+    public List<Object> getArgs(){
+        return args;
+    }
 
 }

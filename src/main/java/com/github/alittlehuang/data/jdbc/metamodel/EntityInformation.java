@@ -20,15 +20,45 @@ public class EntityInformation<T, ID> {
 
     private Class<T> javaType;
     private final Attribute<T, ID> idAttribute;
-    private final List<Attribute<T, Object>> attributes;
+    private final List<Attribute<T, Object>> allAttributes;
+    private final List<Attribute<T, Object>> basicAttributes;
+    private final List<Attribute<T, Object>> manyToOneAttributes;
+    private final List<Attribute<T, Object>> oneToManyAttributes;
+    private final List<Attribute<T, Object>> manyToManyAttributes;
+    private final List<Attribute<T, Object>> oneToOneAttributes;
     private final Map<String, Attribute<T, Object>> nameMap;
     private final String tableName;
 
     private EntityInformation(Class<T> javaType) {
-        this.attributes = initAttributes(javaType);
+        this.allAttributes = initAttributes(javaType);
         this.idAttribute = initIdAttribute();
         this.tableName = initTableName();
-        nameMap = attributes.stream().collect(Collectors.toMap(Attribute::getFieldName, Function.identity()));
+        List<Attribute<T, Object>> basicAttributes = new ArrayList<>();
+        List<Attribute<T, Object>> manyToOneAttributes = new ArrayList<>();
+        List<Attribute<T, Object>> oneToManyAttributes = new ArrayList<>();
+        List<Attribute<T, Object>> manyToManyAttributes = new ArrayList<>();
+        List<Attribute<T, Object>> oneToOneAttributes = new ArrayList<>();
+        for ( Attribute<T, Object> attribute : this.allAttributes ) {
+            Entity entity = attribute.getFieldType().getAnnotation(Entity.class);
+            if ( entity == null ) {
+                basicAttributes.add(attribute);
+            } else if ( attribute.getManyToOne() != null ) {
+                manyToOneAttributes.add(attribute);
+            } else if ( attribute.getOneToMany() != null ) {
+                oneToManyAttributes.add(attribute);
+            } else if ( attribute.getManyToMany() != null ) {
+                manyToManyAttributes.add(attribute);
+            } else if ( attribute.getOneToOne() != null ) {
+                oneToOneAttributes.add(attribute);
+            }
+        }
+        this.basicAttributes = Collections.unmodifiableList(basicAttributes);
+        this.manyToOneAttributes = Collections.unmodifiableList(manyToOneAttributes);
+        this.oneToManyAttributes = Collections.unmodifiableList(oneToManyAttributes);
+        this.manyToManyAttributes = Collections.unmodifiableList(manyToManyAttributes);
+        this.oneToOneAttributes = Collections.unmodifiableList(oneToOneAttributes);
+
+        nameMap = allAttributes.stream().collect(Collectors.toMap(Attribute::getFieldName, Function.identity()));
     }
 
     public static <X, Y> EntityInformation<X, Y> getInstance(Class<X> clazz) {
@@ -42,7 +72,7 @@ public class EntityInformation<T, ID> {
     }
 
     public List<? extends Attribute<T, Object>> getAllAttributes() {
-        return attributes;
+        return allAttributes;
     }
 
     public Class<T> getJavaType() {
@@ -91,7 +121,7 @@ public class EntityInformation<T, ID> {
     }
 
     private Attribute<T, ID> initIdAttribute() {
-        for (Attribute<T, ?> attribute : attributes) {
+        for ( Attribute<T, ?> attribute : allAttributes ) {
             if (attribute.getAnnotation(Id.class) != null) {
                 //noinspection unchecked
                 return (Attribute<T, ID>) attribute;
@@ -127,4 +157,25 @@ public class EntityInformation<T, ID> {
     public Attribute<T, Object> getAttribute(String name) {
         return nameMap.get(name);
     }
+
+    public List<Attribute<T, Object>> getBasicAttributes() {
+        return basicAttributes;
+    }
+
+    public List<Attribute<T, Object>> getOneToManyAttributes() {
+        return oneToManyAttributes;
+    }
+
+    public List<Attribute<T, Object>> getOneToOneAttributes() {
+        return oneToOneAttributes;
+    }
+
+    public List<Attribute<T, Object>> getManyToManyAttributes() {
+        return manyToManyAttributes;
+    }
+
+    public List<Attribute<T, Object>> getManyToOneAttributes() {
+        return manyToOneAttributes;
+    }
+
 }

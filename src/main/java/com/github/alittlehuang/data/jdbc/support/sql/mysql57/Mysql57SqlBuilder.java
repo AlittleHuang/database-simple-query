@@ -4,17 +4,18 @@ import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
-import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttrbute;
+import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
 import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
 import com.github.alittlehuang.data.query.specification.Criteria;
 import com.github.alittlehuang.data.query.specification.Expression;
 import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.specification.WhereClause;
+import com.github.alittlehuang.data.util.JointKey;
+import lombok.EqualsAndHashCode;
 
+import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class Mysql57SqlBuilder implements SqlBuilder {
 
@@ -29,7 +30,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
     }
 
     @Override
-    public PrecompiledSqlForEntity listResult(Criteria<?> criteria) {
+    public <T> PrecompiledSqlForEntity<T> listResult(Criteria<T> criteria) {
         return new Builder<>(criteria).buildListResult();
     }
 
@@ -44,25 +45,64 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
     private static class Builder<T> {
 
-        private Criteria<?> criteria;
-        EntityInformation<T, ?> entityInfo;
+        EntityInformation<T, ?> rootEntityInfo;
         WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
-        List<SelectedAttrbute> selectedAttrbutes;
+        List<SelectedAttribute<T, Object>> selectedAttributes;
+        Map<JointKey, JoinAttr> joinAttrs;
+
+        @EqualsAndHashCode
+        class JoinAttr {
+            Attribute<?, ?> attribute;
+            EntityInformation attrInfo;
+            JoinAttr parent;
+            JoinType joinType = JoinType.LEFT;
+            boolean appended = false;
+            int index = joinAttrs.size();
+
+            public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute) {
+                this.parent = parent;
+                this.attribute = attribute;
+                this.attrInfo = EntityInformation.getInstance(attribute.getFieldType());
+            }
+
+            void appendAlias(StringBuilder sql) {
+                sql.append('`').append(attrInfo.getTableName())
+                        .append('_')
+                        .append(index)
+                        .append('`');
+            }
+        }
 
         StringBuilder sql;
 
         Builder(Criteria<T> criteria) {
-            this.criteria = criteria;
-            entityInfo = EntityInformation.getInstance(criteria.getJavaType());
+            rootEntityInfo = EntityInformation.getInstance(criteria.getJavaType());
             whereClause = criteria.getWhereClause();
         }
 
-        PrecompiledSqlForEntity buildListResult() {
+        PrecompiledSqlForEntity<T> buildListResult() {
             sql = new StringBuilder();
             appendSelectFromEntity();
+            int index = sql.length();
             appendWhereClause();
-            return new PrecompiledSqlForEntityImpl();
+            if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
+                insertJoin(index);
+            }
+            return new PrecompiledSqlForEntity<>(sql.toString(), args, selectedAttributes);
+        }
+
+
+        PrecompiledSql buildCount() {
+            sql = new StringBuilder();
+            sql.append("SELECT COUNT(1) ");
+            appendFrom(rootEntityInfo);
+            int index = sql.length();
+            appendWhereClause();
+            if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
+                insertJoin(index);
+            }
+            return new PrecompiledSql(sql.toString(), args);
         }
 
         private void appendWhereClause() {
@@ -72,52 +112,79 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
         }
 
-        PrecompiledSql buildCount() {
-            sql = new StringBuilder();
-            sql.append("SELECT COUNT(1) ");
-            appendFrom(entityInfo);
-            appendWhereClause();
-            return new PrecompiledSqlImpl();
+        private void insertJoin(int index) {
+            StringBuilder join = new StringBuilder();
+            for ( JoinAttr value : joinAttrs.values() ) {
+                buildJoin(join, value);
+            }
+            sql.insert(index, join);
+        }
+
+        private void buildJoin(StringBuilder sql, JoinAttr joinAttr) {
+            JoinAttr parent = joinAttr.parent;
+            if ( parent != null ) {
+                buildJoin(sql, parent);
+            }
+            if ( !joinAttr.appended ) {
+                joinAttr.appended = true;
+                sql.append(" ").append(joinAttr.joinType).append(" JOIN `")
+                        .append(joinAttr.attrInfo.getTableName())
+                        .append("` ");
+                joinAttr.appendAlias(sql);
+                sql.append(" ON ");
+
+                if ( parent != null ) {
+                    parent.appendAlias(sql);
+                } else {
+                    appendRootTableAlias(sql);
+                }
+
+                sql.append(".`").append(joinAttr.attribute.getJoinColumn().name()).append("`=");
+                joinAttr.appendAlias(sql);
+                sql.append(".`").append(joinAttr.attrInfo.getIdAttribute().getColumnName()).append('`');
+
+            }
         }
 
         private void appendFrom(EntityInformation entityInfo) {
             sql.append("FROM `")
                     .append(entityInfo.getTableName())
                     .append("` ");
-            appendTableAlias(entityInfo);
+            appendRootTableAlias();
         }
 
         private void appendSelectFromEntity() {
-            Class<?> clazz = criteria.getJavaType();
+            selectedAttributes = new ArrayList<>();
+
             sql.append("SELECT");
-            EntityInformation<?, ?> entityInformation = EntityInformation.getInstance(clazz);
 
             boolean first = true;
-            for ( Attribute<?, ?> attribute : entityInformation.getAllAttributes() ) {
+            for ( Attribute<T, Object> attribute : rootEntityInfo.getBasicAttributes() ) {
                 if ( first ) {
                     sql.append(" ");
                     first = false;
                 } else {
                     sql.append(",");
                 }
-                appendColumnName(sql, attribute);
+                appendRootTableAlias();
+                sql.append('.');
+                appendColumnName(attribute);
+                selectedAttributes.add(new SelectedAttribute<>(attribute));
             }
             sql.append(" ");
-            appendFrom(entityInfo);
-        }
-
-        private void appendColumnName(StringBuilder sql, Attribute<?, ?> attribute) {
-            EntityInformation<?, Object> entityInformation = EntityInformation.getInstance(attribute.getEntityType());
-            appendTableAlias(entityInformation);
-            sql.append(".`").append(attribute.getColumnName()).append("`");
-        }
-
-        private void appendTableAlias(EntityInformation entityInformation) {
-            sql.append("`").append(entityInformation.getTableName()).append("_").append("`");
+            appendFrom(rootEntityInfo);
         }
 
         private void appendColumnName(Attribute<?, ?> attribute) {
-            appendColumnName(sql, attribute);
+            sql.append("`").append(attribute.getColumnName()).append("`");
+        }
+
+        private void appendRootTableAlias() {
+            appendRootTableAlias(sql);
+        }
+
+        private void appendRootTableAlias(StringBuilder sql) {
+            sql.append("`").append(rootEntityInfo.getTableName()).append("_").append("`");
         }
 
         private void appendWhereClause(WhereClause<T> whereClause) {
@@ -334,16 +401,30 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void appendComputation(Expression<T> expression) {
-            String[] names = expression.getNames(entityInfo.getJavaType());
-            Attribute<T, Object> attribute = entityInfo.getAttribute(names[0]);
-            appendColumnName(attribute);
-            if ( names.length != 1 ) {
+            String[] names = expression.getNames(rootEntityInfo.getJavaType());
+            Attribute<?, ?> attribute = rootEntityInfo.getAttribute(names[0]);
+            if ( names.length > 1 ) {
+                joinAttrs = joinAttrs == null ? new HashMap<>() : joinAttrs;
+                JoinAttr joinAttr = null;
                 for ( int i = 1; i < names.length; i++ ) {
-                    EntityInformation<Object, Object> info = EntityInformation.getInstance(attribute.getFieldType());
-                    sql.append(".");
-                    appendColumnName(info.getAttribute(names[i]));
+                    JointKey key = new JointKey(joinAttr, attribute);
+                    if ( !joinAttrs.containsKey(key) ) {
+                        joinAttrs.put(key, new JoinAttr(joinAttr, attribute));
+                    }
+                    joinAttr = joinAttrs.get(key);
+
+                    EntityInformation attrInfo = EntityInformation.getInstance(attribute.getFieldType());
+                    attribute = attrInfo.getAttribute(names[i]);
+                    if ( !attribute.isEntityType() ) {
+                        joinAttr.appendAlias(sql);
+                        sql.append('.');
+                    }
                 }
+            } else {
+                appendRootTableAlias();
+                sql.append('.');
             }
+            appendColumnName(attribute);
         }
 
         private void appendCompoundWhereClause(WhereClause<T> whereClause) {
@@ -377,26 +458,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                         sql.append(")");
                     }
                 }
-            }
-        }
-
-        private class PrecompiledSqlImpl implements PrecompiledSql {
-            @Override
-            public String getSql() {
-                return sql.toString();
-            }
-
-            @Override
-            public List<Object> getArgs() {
-                return args;
-            }
-        }
-
-        private class PrecompiledSqlForEntityImpl extends PrecompiledSqlImpl implements PrecompiledSqlForEntity {
-
-            @Override
-            public List<SelectedAttrbute> getSelections() {
-                return selectedAttrbutes;
             }
         }
 

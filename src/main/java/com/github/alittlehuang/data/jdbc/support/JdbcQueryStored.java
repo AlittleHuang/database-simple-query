@@ -4,6 +4,8 @@ import com.alibaba.fastjson.util.TypeUtils;
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
+import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
+import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
 import com.github.alittlehuang.data.query.support.AbstractQueryStored;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,18 +33,17 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public List<T> getResultList() {
-        PrecompiledSql count = dataBasesConfig.getSqlBuilder().listResult(getCriteria());
+        PrecompiledSqlForEntity<T> precompiledSql = dataBasesConfig.getSqlBuilder().listResult(getCriteria());
         try ( Connection connection = dataBasesConfig.getDataSource().getConnection() ) {
-            ResultSet resultSet = getResultSet(connection, count);
-            return toList(resultSet);
+            ResultSet resultSet = getResultSet(connection, precompiledSql);
+            return toList(resultSet, precompiledSql.getSelections());
         } catch ( SQLException e ) {
             throw new RuntimeException(e);
         }
     }
 
-    private List<T> toList(ResultSet resultSet) throws SQLException {
+    private List<T> toList(ResultSet resultSet, List<SelectedAttribute<T, Object>> selectedAttributes) throws SQLException {
         List<T> results = new ArrayList<>();
-        List<? extends Attribute<T, Object>> allAttributes = EntityInformation.getInstance(entityType).getAllAttributes();
         boolean fistRow = true;
         while ( resultSet.next() ) {
             T entity;
@@ -53,8 +54,9 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             }
             results.add(entity);
             int index = 0;
-            for ( Attribute<T, Object> attribute : allAttributes ) {
+            for ( SelectedAttribute<T, Object> selectedAttribute : selectedAttributes ) {
                 Object val = resultSet.getObject(++index);
+                Attribute<T, Object> attribute = selectedAttribute.getAttribute();
                 Class<Object> fieldType = attribute.getFieldType();
                 if ( val != null ) {
                     Class<?> valType = val.getClass();

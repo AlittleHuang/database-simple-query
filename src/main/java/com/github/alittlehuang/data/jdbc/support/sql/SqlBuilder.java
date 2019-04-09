@@ -4,7 +4,7 @@ import com.github.alittlehuang.data.query.specification.Criteria;
 
 public interface SqlBuilder {
 
-    PrecompiledSqlForEntity listResult(Criteria<?> query);
+    <T> PrecompiledSqlForEntity<T> listResult(Criteria<T> query);
 
     PrecompiledSql ListObjects(Criteria<?> query);
 

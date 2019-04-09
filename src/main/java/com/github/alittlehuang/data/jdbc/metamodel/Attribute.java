@@ -1,6 +1,6 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
-import javax.persistence.Column;
+import javax.persistence.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -16,12 +16,26 @@ public class Attribute<X, Y> {
     private final Method getter;
     private final Method setter;
     private final Class<X> entityType;
+    private final ManyToOne manyToOne;
+    private final OneToMany oneToMany;
+    private final JoinColumn joinColumn;
+    private final Version version;
+    private final Column column;
+    private final ManyToMany manyToMany;
+    private final OneToOne oneToOne;
 
     public Attribute(Field field, Method getter, Method setter, Class<X> entityType) {
         this.field = field;
         this.getter = getter;
         this.setter = setter;
         this.entityType = entityType;
+        this.manyToOne = getAnnotation(ManyToOne.class);
+        this.oneToMany = getAnnotation(OneToMany.class);
+        this.joinColumn = getAnnotation(JoinColumn.class);
+        this.version = getAnnotation(Version.class);
+        this.column = getAnnotation(Column.class);
+        this.manyToMany = getAnnotation(ManyToMany.class);
+        this.oneToOne = getAnnotation(OneToOne.class);
     }
 
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
@@ -100,5 +114,37 @@ public class Attribute<X, Y> {
 
     public Field getField() {
         return field;
+    }
+
+    public ManyToOne getManyToOne() {
+        return manyToOne;
+    }
+
+    public OneToMany getOneToMany() {
+        return oneToMany;
+    }
+
+    public Column getColumn() {
+        return column;
+    }
+
+    public Version getVersion() {
+        return version;
+    }
+
+    public JoinColumn getJoinColumn() {
+        return joinColumn;
+    }
+
+    public ManyToMany getManyToMany() {
+        return manyToMany;
+    }
+
+    public OneToOne getOneToOne() {
+        return oneToOne;
+    }
+
+    public boolean isEntityType() {
+        return getFieldType().getAnnotation(Entity.class) != null;
     }
 }
