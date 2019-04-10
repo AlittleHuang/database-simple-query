@@ -92,9 +92,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void appendLockMode() {
-            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_READ).getResultList();//in share mode
-            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_WRITE).getResultList();//for update
-            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_FORCE_INCREMENT).getResultList();//for update
             LockModeType lockModeType = criteria.getLockModeType();
             if ( lockModeType != null ) {
                 switch ( lockModeType ) {
