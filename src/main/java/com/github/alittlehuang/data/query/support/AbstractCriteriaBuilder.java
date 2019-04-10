@@ -1,10 +1,6 @@
 package com.github.alittlehuang.data.query.support;
 
-import com.github.alittlehuang.data.query.specification.AggregateFunctions;
-import com.github.alittlehuang.data.query.specification.CriteriaBuilder;
-import com.github.alittlehuang.data.query.specification.Expression;
-import com.github.alittlehuang.data.query.specification.Selection;
-import org.springframework.data.domain.Sort;
+import com.github.alittlehuang.data.query.specification.*;
 
 import javax.persistence.LockModeType;
 import javax.persistence.criteria.JoinType;
@@ -78,28 +74,28 @@ public abstract class AbstractCriteriaBuilder<T, THIS extends CriteriaBuilder<T,
     @Override
     public THIS addOrdersAsc(String... paths) {
         for (String path : paths) {
-            criteria.orders.add(new SimpleOrders<>(Sort.Direction.ASC, path));
+            criteria.orders.add(new SimpleOrders<>(Direction.ASC, path));
         }
         return self();
     }
 
     @Override
     public THIS addOrdersAsc(Expressions<T, ?> expression) {
-        criteria.orders.add(new SimpleOrders<>(Sort.Direction.ASC, expression));
+        criteria.orders.add(new SimpleOrders<>(Direction.ASC, expression));
         return self();
     }
 
     @Override
     public THIS addOrdersDesc(String... paths) {
         for (String path : paths) {
-            criteria.orders.add(new SimpleOrders<>(Sort.Direction.DESC, path));
+            criteria.orders.add(new SimpleOrders<>(Direction.DESC, path));
         }
         return self();
     }
 
     @Override
     public THIS addOrdersDesc(Expressions<T, ?> expression) {
-        criteria.orders.add(new SimpleOrders<>(Sort.Direction.DESC, expression));
+        criteria.orders.add(new SimpleOrders<>(Direction.DESC, expression));
         return self();
     }
 

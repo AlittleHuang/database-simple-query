@@ -161,7 +161,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                         for ( int i = 1; i < names.length; i++ ) {
                             attr = attrInfo.getAttribute(names[i]);
                             attrInfo = EntityInformation.getInstance(attr.getFieldType());
-                            //noinspection unchecked
                             p = new SelectedAttribute(attr, p);
                         }
                     }
@@ -169,7 +168,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                         sql.append(",");
                         tmp[names.length] = attribute.getFieldName();
                         appendAttribute(tmp, fetch.getJoinType());
-                        //noinspection unchecked
                         selectedAttributes.add(new SelectedAttribute(attribute, p));
                     }
                 }
@@ -188,7 +186,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void appendRootTableAlias(StringBuilder sql) {
-            sql.append("`").append(rootEntityInfo.getTableName()).append("_").append("`");
+            sql.append("`").append(rootEntityInfo.getTableName()).append("_r").append("`");
         }
 
         private void appendWhereClause(WhereClause<T> whereClause) {

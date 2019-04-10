@@ -1,14 +1,16 @@
 package com.github.alittlehuang.data.query.support;
 
-import org.springframework.cglib.proxy.Enhancer;
-import org.springframework.cglib.proxy.MethodInterceptor;
-import org.springframework.cglib.proxy.MethodProxy;
-import org.springframework.util.Assert;
+
+import com.github.alittlehuang.data.util.Assert;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GetterMethodUtil {
@@ -43,7 +45,7 @@ public class GetterMethodUtil {
         }
         if ( method == null ) {
             method = map.get(key);
-            Assert.notNull(method, "The function is not getter of " + type.getName());
+            Objects.requireNonNull(method,"The function is not getter of " + type.getName());
         }
         return method;
     }
@@ -51,6 +53,7 @@ public class GetterMethodUtil {
     public static String toAttrName(String getterName) {
         boolean check = getterName != null && getterName.length() > 3 && getterName.startsWith("get");
         Assert.state(check, "the function is not getters");
+        //noinspection ConstantConditions
         StringBuilder builder = new StringBuilder(getterName.substring(3));
         if ( builder.length() == 1 ) {
             return builder.toString().toLowerCase();

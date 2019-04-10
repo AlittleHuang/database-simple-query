@@ -1,19 +1,16 @@
 package com.github.alittlehuang.data.jpa.support;
 
-import com.github.alittlehuang.data.query.specification.Selection;
+import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jpa.util.JpaHelper;
+import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.specification.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.repository.support.JpaEntityInformation;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.*;
 import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -82,13 +79,12 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         StoredData<T> data = new StoredData<>(type).initAll();
         TypedQuery<T> typedQuery = entityManager.createQuery(data.query.select(data.root));
 
-        PageRequest pageable = PageRequest.of((int) page, (int) size);
-        setLimilt(typedQuery, pageable.getOffset(), size);
+        setLimilt(typedQuery, page * size, size);
 
         setLock(typedQuery);
         List<T> resultList = typedQuery.getResultList();
 
-        return new PageImpl<>(resultList, pageable, count);
+        return toPage(count, resultList);
     }
 
     @Override
@@ -114,8 +110,8 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
     @Override
     public boolean exists() {
         StoredData<Object> data = new StoredData<>(Object.class).initWhere().initGroupBy();
-        JpaEntityInformation<T, ?> information = getJpaEntityInformation();
-        data.query.select(data.root.get(information.getIdAttribute()));
+        EntityInformation<T, ?> information = getJpaEntityInformation();
+        data.query.select(data.root.get(information.getIdAttribute().getFieldName()));
         return !entityManager.createQuery(data.query)
                 .setMaxResults(1)
                 .getResultList()
@@ -138,6 +134,19 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         }
     }
 
+    private Page<T> toPage(long count, List<T> resultList) {
+        return new Page<T>() {
+            @Override
+            public List<T> getContent() {
+                return resultList;
+            }
+
+            @Override
+            public long getTotalElement() {
+                return count;
+            }
+        };
+    }
     private class StoredData<R> {
         final CriteriaBuilder cb;
         final CriteriaQuery<R> query;

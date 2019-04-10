@@ -1,10 +1,10 @@
 package com.github.alittlehuang.data.query.specification;
 
-import org.springframework.data.domain.Page;
 
+import java.util.Collections;
 import java.util.List;
 
-import static org.springframework.util.Assert.state;
+import static com.github.alittlehuang.data.util.Assert.state;
 
 public interface QueryStored<T> {
 
@@ -33,6 +33,28 @@ public interface QueryStored<T> {
     boolean exists();
 
     Class<T> getJavaType();
+
+    interface Page<X> {
+
+        List<X> getContent();
+
+        long getTotalElement();
+
+        static <Y> Page<Y> empty() {
+            return new Page<Y>() {
+                @Override
+                public List<Y> getContent() {
+                    return Collections.emptyList();
+                }
+
+                @Override
+                public long getTotalElement() {
+                    return 0;
+                }
+            };
+        }
+
+    }
 
 
 }

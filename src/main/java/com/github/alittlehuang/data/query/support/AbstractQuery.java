@@ -3,7 +3,6 @@ package com.github.alittlehuang.data.query.support;
 import com.github.alittlehuang.data.query.specification.Expression;
 import com.github.alittlehuang.data.query.specification.Query;
 import com.github.alittlehuang.data.query.specification.QueryStored;
-import org.springframework.data.domain.Page;
 
 import java.util.List;
 
