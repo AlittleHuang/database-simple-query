@@ -1,7 +1,5 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
-import com.github.alittlehuang.data.util.StringUtils;
-
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -141,7 +139,7 @@ public class EntityInformation<T, ID> {
         if (table != null && table.name().length() > 0) {
             return table.name();
         }
-        return StringUtils.humpToDownLine(javaType.getSimpleName());
+        return javaType.getSimpleName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
     private static Field getDeclaredField(Class<?> clazz, String name) {

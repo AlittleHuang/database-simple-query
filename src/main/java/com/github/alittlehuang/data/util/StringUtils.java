@@ -40,8 +40,4 @@ public abstract class StringUtils {
         return str != null && !str.isEmpty();
     }
 
-    public static String humpToDownLine(String str) {
-        if (str == null) return null;
-        return str.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
-    }
 }

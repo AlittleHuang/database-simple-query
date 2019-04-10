@@ -95,7 +95,7 @@ public class Attribute<X, Y> {
         if (column != null && column.name().length() != 0) {
             return column.name();
         } else {
-            return StringUtil.toUnderline(field.getName());
+            return field.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
         }
     }
 
