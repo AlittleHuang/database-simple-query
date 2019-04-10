@@ -1,5 +1,7 @@
 package com.github.alittlehuang.data.jdbc.metamodel;
 
+import com.github.alittlehuang.data.util.StringUtils;
+
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -139,7 +141,7 @@ public class EntityInformation<T, ID> {
         if (table != null && table.name().length() > 0) {
             return table.name();
         }
-        return StringUtil.toUnderline(javaType.getSimpleName());
+        return StringUtils.humpToDownLine(javaType.getSimpleName());
     }
 
     private static Field getDeclaredField(Class<?> clazz, String name) {
