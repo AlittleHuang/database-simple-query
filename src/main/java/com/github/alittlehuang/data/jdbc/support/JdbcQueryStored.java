@@ -5,6 +5,7 @@ import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
 import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
+import com.github.alittlehuang.data.query.page.Page;
 import com.github.alittlehuang.data.query.support.AbstractQueryStored;
 import com.github.alittlehuang.data.util.JointKey;
 import org.slf4j.Logger;

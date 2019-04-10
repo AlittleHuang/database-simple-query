@@ -4,7 +4,7 @@ import com.github.alittlehuang.data.query.specification.Expression;
 import com.github.alittlehuang.data.query.support.AbstractWhereClauseBuilder;
 import com.github.alittlehuang.data.query.support.SimpleWhereClause;
 import lombok.NoArgsConstructor;
-//import org.springframework.data.jpa.domain.Specification;
+//import org.springframework.data.jpa.page.Specification;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;

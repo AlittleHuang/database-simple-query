@@ -2,6 +2,8 @@ package com.github.alittlehuang.data.jpa.support;
 
 import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jpa.util.JpaHelper;
+import com.github.alittlehuang.data.query.page.Page;
+import com.github.alittlehuang.data.query.page.Pageable;
 import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.specification.*;
 
@@ -25,7 +27,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
     public List<T> getResultList() {
         StoredData<T> data = new StoredData<>(type).initAll();
         TypedQuery<T> typedQuery = entityManager.createQuery(data.query.select(data.root));
-        setLimilt(typedQuery, criteria.getOffset(), criteria.getMaxResults());
+        setLimit(typedQuery, criteria.getOffset(), criteria.getMaxResults());
         setLock(typedQuery);
         return typedQuery.getResultList();
     }
@@ -65,7 +67,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
                 }).collect(Collectors.toList());
         TypedQuery typedQuery = entityManager
                 .createQuery(query.multiselect(selections));
-        setLimilt(typedQuery, criteria.getOffset(), criteria.getMaxResults());
+        setLimit(typedQuery, criteria.getOffset(), criteria.getMaxResults());
         setLock(typedQuery);
         return (List<X>) typedQuery.getResultList();
     }
@@ -73,18 +75,19 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
     @Override
     public Page<T> getPage(long page, long size) {
         long count = count();
+        Pageable pageable = new Pageable((int) page, (int) size);
         if (count == 0) {
-            return Page.empty();
+            return Page.empty(pageable);
         }
         StoredData<T> data = new StoredData<>(type).initAll();
         TypedQuery<T> typedQuery = entityManager.createQuery(data.query.select(data.root));
 
-        setLimilt(typedQuery, page * size, size);
+        setLimit(typedQuery, pageable.getOffset(), size);
 
         setLock(typedQuery);
         List<T> resultList = typedQuery.getResultList();
 
-        return toPage(count, resultList);
+        return new Page<>(resultList, pageable, count);
     }
 
     @Override
@@ -125,7 +128,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         }
     }
 
-    private void setLimilt(TypedQuery<T> typedQuery, Long offset, Long maxResults) {
+    private void setLimit(TypedQuery<T> typedQuery, Long offset, Long maxResults) {
         if (maxResults != null && maxResults > 0) {
             typedQuery.setMaxResults(maxResults.intValue());
             if (offset != null && offset > 0) {
@@ -134,19 +137,6 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         }
     }
 
-    private Page<T> toPage(long count, List<T> resultList) {
-        return new Page<T>() {
-            @Override
-            public List<T> getContent() {
-                return resultList;
-            }
-
-            @Override
-            public long getTotalElement() {
-                return count;
-            }
-        };
-    }
     private class StoredData<R> {
         final CriteriaBuilder cb;
         final CriteriaQuery<R> query;
