@@ -7,6 +7,7 @@ import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
 import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
 import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
 import com.github.alittlehuang.data.query.support.AbstractQueryStored;
+import com.github.alittlehuang.data.util.JointKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -17,7 +18,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
@@ -42,7 +45,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
         }
     }
 
-    private List<T> toList(ResultSet resultSet, List<SelectedAttribute<T, Object>> selectedAttributes) throws SQLException {
+    private List<T> toList(ResultSet resultSet, List<SelectedAttribute> selectedAttributes) throws SQLException {
         List<T> results = new ArrayList<>();
         boolean fistRow = true;
         while ( resultSet.next() ) {
@@ -54,9 +57,11 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             }
             results.add(entity);
             int index = 0;
-            for ( SelectedAttribute<T, Object> selectedAttribute : selectedAttributes ) {
+            HashMap<JointKey, Object> instanceMap = new HashMap<>();
+            instanceMap.put(asKey(null), entity);
+            for ( SelectedAttribute selectedAttribute : selectedAttributes ) {
                 Object val = resultSet.getObject(++index);
-                Attribute<T, Object> attribute = selectedAttribute.getAttribute();
+                Attribute<Object, Object> attribute = selectedAttribute.getAttribute();
                 Class<Object> fieldType = attribute.getFieldType();
                 if ( val != null ) {
                     Class<?> valType = val.getClass();
@@ -65,8 +70,8 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
                         if ( function != null ) {
                             val = function.apply(val);
                         } else {
-                            Class<T> entityType = attribute.getEntityType();
-                            EntityInformation<T, Object> information = EntityInformation.getInstance(entityType);
+                            Class<Object> entityType = attribute.getEntityType();
+                            EntityInformation<Object, Object> information = EntityInformation.getInstance(entityType);
                             Field field = attribute.getField();
                             if ( fistRow && logger.isWarnEnabled() ) {
                                 logger.warn("the type " + information.getTableName() + "." + attribute.getColumnName() +
@@ -77,12 +82,37 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
                             val = TypeUtils.cast(val, fieldType, null);
                         }
                     }
+                    Object entityAttr = getInstance(instanceMap, selectedAttribute.getParent());
+                    attribute.setValue(entityAttr, val);
                 }
-                attribute.setValue(entity, val);
             }
             fistRow = false;
         }
         return results;
+    }
+
+    private Object getInstance(Map<JointKey, Object> map, SelectedAttribute selected) {
+
+        JointKey key = asKey(selected);
+        if ( map.containsKey(key) ) {
+            return map.get(key);
+        }
+
+        try {
+            Object parentInstance = getInstance(map, selected.getParent());
+            Attribute<Object, Object> attribute = selected.getAttribute();
+            Object val = attribute.getFieldType().newInstance();
+            attribute.setValue(parentInstance, val);
+            map.put(key, val);
+            return val;
+        } catch ( InstantiationException | IllegalAccessException e ) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private JointKey asKey(SelectedAttribute selected) {
+        return selected == null ? null : new JointKey(selected.getAttribute(), selected.getParentAttribute());
     }
 
     @Override

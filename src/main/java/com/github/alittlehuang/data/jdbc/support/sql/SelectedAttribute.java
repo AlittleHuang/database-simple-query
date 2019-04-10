@@ -2,25 +2,30 @@ package com.github.alittlehuang.data.jdbc.support.sql;
 
 import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
 
-public class SelectedAttribute<X, Y> {
+public class SelectedAttribute {
 
-    private Attribute<X, Y> attribute;
-    private SelectedAttribute<?, X> parent;
+    private Attribute attribute;
+    private SelectedAttribute parent;
 
-    public SelectedAttribute(Attribute<X, Y> attribute) {
+    public SelectedAttribute(Attribute<?, ?> attribute) {
         this.attribute = attribute;
     }
 
-    public SelectedAttribute(Attribute<X, Y> attribute, SelectedAttribute<?, X> parent) {
+    public SelectedAttribute(Attribute attribute, SelectedAttribute parent) {
         this.attribute = attribute;
         this.parent = parent;
     }
 
-    public Attribute<X,Y> getAttribute() {
+    public Attribute<Object, Object> getAttribute() {
+        //noinspection unchecked
         return attribute;
     }
 
     public SelectedAttribute getParent() {
         return parent;
+    }
+
+    public Attribute<Object, Object> getParentAttribute() {
+        return parent == null ? null : parent.getAttribute();
     }
 }

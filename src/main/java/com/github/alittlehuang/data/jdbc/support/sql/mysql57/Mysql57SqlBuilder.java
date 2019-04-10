@@ -44,7 +44,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         EntityInformation<T, ?> rootEntityInfo;
         WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
-        List<SelectedAttribute<T, Object>> selectedAttributes;
+        List<SelectedAttribute> selectedAttributes;
         Map<JointKey, JoinAttr> joinAttrs;
 
         StringBuilder sql;
@@ -115,7 +115,11 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
                 sql.append(".`").append(joinAttr.attribute.getJoinColumn().name()).append("`=");
                 joinAttr.appendAlias(sql);
-                sql.append(".`").append(joinAttr.attrInfo.getIdAttribute().getColumnName()).append('`');
+                String referenced = joinAttr.attribute.getJoinColumn().referencedColumnName();
+                if ( referenced.length() == 0 ) {
+                    referenced = joinAttr.attrInfo.getIdAttribute().getColumnName();
+                }
+                sql.append(".`").append(referenced).append('`');
 
             }
         }
@@ -141,16 +145,33 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 appendRootTableAlias();
                 sql.append('.');
                 appendColumnName(attribute);
-                selectedAttributes.add(new SelectedAttribute<>(attribute));
+                selectedAttributes.add(new SelectedAttribute(attribute));
             }
-            List<? extends FetchAttribute<T>> fetchs = criteria.getFetchAttributes();
-            if (fetchs != null && !fetchs.isEmpty()) {
-                for (FetchAttribute<T> fetch : fetchs) {
-
-                    // TODO
+            List<? extends FetchAttribute<T>> fetchList = criteria.getFetchAttributes();
+            if ( fetchList != null && !fetchList.isEmpty() ) {
+                for ( FetchAttribute<T> fetch : fetchList ) {
                     String[] names = fetch.getNames(rootEntityInfo.getJavaType());
-                    sql.append(",");
-                    appendComputation(fetch);
+                    String[] tmp = new String[names.length + 1];
+                    System.arraycopy(names, 0, tmp, 0, names.length);
+
+                    Attribute<?, ?> attr = rootEntityInfo.getAttribute(names[0]);
+                    EntityInformation<?, ?> attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                    SelectedAttribute p = new SelectedAttribute(attr, null);
+                    if ( names.length > 1 ) {
+                        for ( int i = 1; i < names.length; i++ ) {
+                            attr = attrInfo.getAttribute(names[i]);
+                            attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                            //noinspection unchecked
+                            p = new SelectedAttribute(attr, p);
+                        }
+                    }
+                    for ( Attribute<?, ?> attribute : attrInfo.getBasicAttributes() ) {
+                        sql.append(",");
+                        tmp[names.length] = attribute.getFieldName();
+                        appendAttribute(tmp, fetch.getJoinType());
+                        //noinspection unchecked
+                        selectedAttributes.add(new SelectedAttribute(attribute, p));
+                    }
                 }
             }
 
@@ -275,34 +296,34 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             function = function == null ? Expression.Function.NONE : function;
             switch ( function ) {
                 case NONE:
-                    appendComputation(expression);
+                    appendAttribute(expression);
                     break;
                 case ABS:
                     appendSingleParameterFunction(expression, "ABS");
                     break;
                 case SUM: {
-                    appendComputation(expression.getSubexpression());
+                    appendAttribute(expression.getSubexpression());
                     sql.append("+");
                     Object arg = expression.getArgs()[0];
                     appendSqlParameter(arg);
                     break;
                 }
                 case PROD: {
-                    appendComputation(expression.getSubexpression());
+                    appendAttribute(expression.getSubexpression());
                     sql.append("*");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case DIFF: {
-                    appendComputation(expression.getSubexpression());
+                    appendAttribute(expression.getSubexpression());
                     sql.append("-");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case QUOT: {
-                    appendComputation(expression.getSubexpression());
+                    appendAttribute(expression.getSubexpression());
                     sql.append("/");
                     Object arg = expression.getArgs()[0];
                     appendFunArgs(arg);
@@ -338,7 +359,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     sql.append("LOCATE").append("(");
                     appendFunArg(expression.getArgs());
                     sql.append(",");
-                    appendComputation(expression.getSubexpression());
+                    appendAttribute(expression.getSubexpression());
                     sql.append(")");
                     break;
                 case COALESCE:
@@ -353,7 +374,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
         private void appendMultiParameterFunction(Expression<T> expression, String funStr) {
             sql.append(funStr).append("(");
-            appendComputation(expression.getSubexpression());
+            appendAttribute(expression.getSubexpression());
             sql.append(",");
             appendFunArg(expression.getArgs());
             sql.append(")");
@@ -383,26 +404,27 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
         }
 
-        private void appendComputation(com.github.alittlehuang.data.query.specification.Attribute<T> expression) {
-            appendComputation(expression, JoinType.LEFT);
+        private void appendAttribute(com.github.alittlehuang.data.query.specification.Attribute<T> attribute) {
+            String[] names = attribute.getNames(rootEntityInfo.getJavaType());
+            appendAttribute(names, JoinType.LEFT);
         }
 
-        private void appendComputation(com.github.alittlehuang.data.query.specification.Attribute<T> expression, JoinType joinType) {
-            String[] names = expression.getNames(rootEntityInfo.getJavaType());
-            Attribute<?, ?> attribute = rootEntityInfo.getAttribute(names[0]);
+        private void appendAttribute(String[] names, JoinType joinType) {
+            Attribute<?, ?> attr = rootEntityInfo.getAttribute(names[0]);
             if ( names.length > 1 ) {
                 joinAttrs = joinAttrs == null ? new HashMap<>() : joinAttrs;
                 JoinAttr joinAttr = null;
                 for ( int i = 1; i < names.length; i++ ) {
-                    JointKey key = new JointKey(joinAttr, attribute);
+                    JointKey key = new JointKey(joinAttr, attr);
                     if ( !joinAttrs.containsKey(key) ) {
-                        joinAttrs.put(key, new JoinAttr(joinAttr, attribute, joinType));
+                        joinAttrs.put(key, new JoinAttr(joinAttr, attr));
                     }
                     joinAttr = joinAttrs.get(key);
+                    joinAttr.joinType = joinType;
 
-                    EntityInformation attrInfo = EntityInformation.getInstance(attribute.getFieldType());
-                    attribute = attrInfo.getAttribute(names[i]);
-                    if ( !attribute.isEntityType() ) {
+                    EntityInformation attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                    attr = attrInfo.getAttribute(names[i]);
+                    if ( !attr.isEntityType() ) {
                         joinAttr.appendAlias(sql);
                         sql.append('.');
                     }
@@ -411,7 +433,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 appendRootTableAlias();
                 sql.append('.');
             }
-            appendColumnName(attribute);
+            appendColumnName(attr);
         }
 
         private void appendCompoundWhereClause(WhereClause<T> whereClause) {
@@ -456,11 +478,10 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             boolean appended = false;
             int index = joinAttrs.size();
 
-            public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute, JoinType joinType) {
+            public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute) {
                 this.parent = parent;
                 this.attribute = attribute;
                 this.attrInfo = EntityInformation.getInstance(attribute.getFieldType());
-                this.joinType = joinType;
             }
 
             void appendAlias(StringBuilder sql) {
