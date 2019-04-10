@@ -204,7 +204,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             StringBuilder info = new StringBuilder();
             info.append("prepared sql:\n\n ").append(sql);
             if ( !args.isEmpty() ) {
-                info.append("\n  args: ").append(args.toString());
+                info.append("\n args: ").append(args.toString());
             }
             info.append("\n");
             logger.debug(info.toString());

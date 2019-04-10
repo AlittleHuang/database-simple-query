@@ -9,6 +9,7 @@ import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
 import com.github.alittlehuang.data.query.specification.*;
 import com.github.alittlehuang.data.util.JointKey;
 
+import javax.persistence.LockModeType;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import java.util.*;
@@ -42,7 +43,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
     private static class Builder<T> {
         Criteria<T> criteria;
         EntityInformation<T, ?> rootEntityInfo;
-        WhereClause<T> whereClause;
         List<Object> args = new ArrayList<>();
         List<SelectedAttribute> selectedAttributes;
         Map<JointKey, JoinAttr> joinAttrs;
@@ -51,7 +51,6 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
         Builder(Criteria<T> criteria) {
             rootEntityInfo = EntityInformation.getInstance(criteria.getJavaType());
-            whereClause = criteria.getWhereClause();
             this.criteria = criteria;
         }
 
@@ -60,16 +59,18 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             appendSelectFromEntity();
             int index = sql.length();
             appendWhereClause();
+            appendOrders();
+            appendLimit();
+            appendLockMode();
             if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
                 insertJoin(index);
             }
             return new PrecompiledSqlForEntity<>(sql.toString(), args, selectedAttributes);
         }
 
-
         PrecompiledSql buildCount() {
             sql = new StringBuilder();
-            sql.append("SELECT COUNT(1) ");
+            sql.append("SELECT COUNT(1) AS `count_").append(rootEntityInfo.getTableName()).append("` ");
             appendFrom(rootEntityInfo);
             int index = sql.length();
             appendWhereClause();
@@ -79,8 +80,58 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             return new PrecompiledSql(sql.toString(), args);
         }
 
+        private void appendLimit() {
+            Long offset = criteria.getOffset();
+            Long maxResults = criteria.getMaxResults();
+            if ( offset != null || maxResults != null ) {
+                sql.append(" LIMIT ")
+                        .append(offset == null ? 0 : offset)
+                        .append(',')
+                        .append(maxResults == null ? Long.MAX_VALUE : maxResults);
+            }
+        }
+
+        private void appendLockMode() {
+            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_READ).getResultList();//in share mode
+            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_WRITE).getResultList();//for update
+            // repository.query().setLockModeType(LockModeType.PESSIMISTIC_FORCE_INCREMENT).getResultList();//for update
+            LockModeType lockModeType = criteria.getLockModeType();
+            if ( lockModeType != null ) {
+                switch ( lockModeType ) {
+                    case PESSIMISTIC_READ:
+                        sql.append(" LOCK IN SHARE MODE");
+                        break;
+                    case PESSIMISTIC_WRITE:
+                    case PESSIMISTIC_FORCE_INCREMENT:
+                        sql.append(" FOR UPDATE");
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        private void appendOrders() {
+            List<? extends Orders<T>> orders = criteria.getOrders();
+            if ( orders != null && !orders.isEmpty() ) {
+                sql.append(" ORDER BY ");
+                boolean first = true;
+                for ( Orders<T> order : orders ) {
+                    if ( first ) {
+                        first = false;
+                    } else {
+                        sql.append(',');
+                    }
+                    appendAttribute(order);
+                    sql.append(" ").append(order.getDirection());
+                }
+
+            }
+        }
+
         private void appendWhereClause() {
-            if ( whereClause == null || !whereClause.isCompound() || !whereClause.getCompoundItems().isEmpty() ) {
+            WhereClause<T> whereClause = criteria.getWhereClause();
+            if ( whereClause != null && ( !whereClause.isCompound() || !whereClause.getCompoundItems().isEmpty() ) ) {
                 sql.append(" WHERE ");
                 appendWhereClause(whereClause);
             }
@@ -186,7 +237,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void appendRootTableAlias(StringBuilder sql) {
-            sql.append("`").append(rootEntityInfo.getTableName()).append("_r").append("`");
+            sql.append(rootEntityInfo.getTableName()).append("0_");
         }
 
         private void appendWhereClause(WhereClause<T> whereClause) {
@@ -483,10 +534,9 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             }
 
             void appendAlias(StringBuilder sql) {
-                sql.append('`').append(attrInfo.getTableName())
-                        .append('_')
+                sql.append(attrInfo.getTableName())
                         .append(index)
-                        .append('`');
+                        .append("_");
             }
         }
     }
