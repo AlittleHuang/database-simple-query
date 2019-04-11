@@ -1,11 +1,11 @@
 package com.github.alittlehuang.data.jdbc.sql.mysql57;
 
-import com.github.alittlehuang.data.metamodel.Attribute;
-import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jdbc.sql.PrecompiledSql;
 import com.github.alittlehuang.data.jdbc.sql.PrecompiledSqlForEntity;
 import com.github.alittlehuang.data.jdbc.sql.SelectedAttribute;
 import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.metamodel.Attribute;
+import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.query.specification.*;
 import com.github.alittlehuang.data.util.Assert;
 import com.github.alittlehuang.data.util.JointKey;
@@ -14,6 +14,8 @@ import javax.persistence.LockModeType;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import java.util.*;
+
+import static javax.persistence.criteria.CriteriaBuilder.Trimspec;
 
 public class Mysql57SqlBuilder implements SqlBuilder {
 
@@ -142,7 +144,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     } else {
                         sql.append(',');
                     }
-                    appendAttribute(order);
+                    appendExpression(order);
                     sql.append(" ").append(order.getDirection());
                 }
 
@@ -298,45 +300,43 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
         private void appendNonCompoundWhereClause(WhereClause<T> item) {
             Expression<T> expression = item.getExpression();
-            if ( item.isNegate() ) {
-                sql.append("NOT ");
-            }
+            boolean negate = item.isNegate();
             appendExpression(expression);
             switch ( item.getConditionalOperator() ) {
                 case EQUAL:
-                    appendComparisonOperatorExpression(item, "=");
+                    appendComparisonOperatorExpression(item, negate ? "<>" : "=");
                     break;
                 case GREATER_THAN:
-                    appendComparisonOperatorExpression(item, ">");
+                    appendComparisonOperatorExpression(item, negate ? "<=" : ">");
                     break;
                 case LESS_THAN:
-                    appendComparisonOperatorExpression(item, "<");
+                    appendComparisonOperatorExpression(item, negate ? ">=" : "<");
                     break;
                 case GREATER_THAN_OR_EQUAL_TO:
-                    appendComparisonOperatorExpression(item, ">=");
+                    appendComparisonOperatorExpression(item, negate ? "<" : ">=");
                     break;
                 case LESS_THAN_OR_EQUAL_TO:
-                    appendComparisonOperatorExpression(item, "<=");
+                    appendComparisonOperatorExpression(item, negate ? ">" : "<=");
                     break;
                 case BETWEEN: {
                     Iterator<?> iterator = ( (Iterable<?>) item.getParameter() ).iterator();
-                    sql.append(" BETWEEN ");
+                    sql.append(negate ? " NOT BETWEEN " : " BETWEEN ");
                     appendSimpleParam(iterator.next());
                     sql.append(" AND ");
                     appendSimpleParam(iterator.next());
                     break;
                 }
                 case IN: {
-                    sql.append(" IN(");
+                    sql.append(negate ? " NOT IN(" : " IN(");
                     appendSqlParameter(item.getParameter());
                     sql.append(")");
                     break;
                 }
                 case LIKE:
-                    appendComparisonOperatorExpression(item, " LIKE ");
+                    appendComparisonOperatorExpression(item, negate ? " NOT LIKE " : " LIKE ");
                     break;
                 case IS_NULL:
-                    sql.append(" IS NULL");
+                    sql.append(negate ? " IS NOT NULL" : " IS NULL");
                     break;
             }
 
@@ -391,6 +391,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         private void appendExpression(Expression<T> expression) {
             Expression.Function function = expression.getFunction();
             function = function == null ? Expression.Function.NONE : function;
+            Object[] args = expression.getArgs();
             switch ( function ) {
                 case NONE:
                     appendAttribute(expression);
@@ -401,28 +402,28 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                 case SUM: {
                     appendAttribute(expression.getSubexpression());
                     sql.append("+");
-                    Object arg = expression.getArgs()[0];
+                    Object arg = args[0];
                     appendSqlParameter(arg);
                     break;
                 }
                 case PROD: {
                     appendAttribute(expression.getSubexpression());
                     sql.append("*");
-                    Object arg = expression.getArgs()[0];
+                    Object arg = args[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case DIFF: {
                     appendAttribute(expression.getSubexpression());
                     sql.append("-");
-                    Object arg = expression.getArgs()[0];
+                    Object arg = args[0];
                     appendFunArgs(arg);
                     break;
                 }
                 case QUOT: {
                     appendAttribute(expression.getSubexpression());
                     sql.append("/");
-                    Object arg = expression.getArgs()[0];
+                    Object arg = args[0];
                     appendFunArgs(arg);
                     break;
                 }
@@ -441,7 +442,16 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     appendMultiParameterFunction(expression, "SUBSTRING");
                     break;
                 case TRIM:
-                    appendSingleParameterFunction(expression, "TRIM");
+                    if ( args == null || args.length == 0 ) {
+                        appendSingleParameterFunction(expression, "TRIM");
+                    } else {
+                        Trimspec p0 = (Trimspec) args[0];
+                        char p1 = ' ';
+                        if ( args.length == 2 ) {
+                            p1 = (char) args[1];
+                        }
+                        sql.append("TRIM(").append(p0).append(" '").append(p1).append("' FROM user0_.`password`)");
+                    }
                     break;
                 case LOWER:
                     appendSingleParameterFunction(expression, "LOWER");
@@ -454,7 +464,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                     break;
                 case LOCATE:
                     sql.append("LOCATE").append("(");
-                    appendFunArg(expression.getArgs());
+                    appendFunArg(args);
                     sql.append(",");
                     appendAttribute(expression.getSubexpression());
                     sql.append(")");
