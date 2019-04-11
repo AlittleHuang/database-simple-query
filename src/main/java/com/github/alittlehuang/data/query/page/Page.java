@@ -15,91 +15,31 @@
  */
 package com.github.alittlehuang.data.query.page;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Function;
+public interface Page<T> {
 
-/**
- * Basic {@code Page} implementation.
- *
- * @param <T> the type of which the page consists.
- * @author Oliver Gierke
- * @author Mark Paluch
- */
-public class Page<T> extends Chunk<T> {
+    static <T> Page<T> empty(Pageable pageable) {
+        return new Page<T>() {
+            @Override
+            public int getNumber() {
+                return pageable.getPageNumber();
+            }
 
-    private static final long serialVersionUID = 867755909294344406L;
+            @Override
+            public int getSize() {
+                return pageable.getPageSize();
+            }
 
-    private final long total;
-
-    /**
-     * Constructor of {@code Page}.
-     *
-     * @param content  the content of this page, must not be {@literal null}.
-     * @param pageable the paging information, must not be {@literal null}.
-     * @param total    the total amount of items available. The total might be adapted considering the length of the content
-     *                 given, if it is going to be the content of the last page. This is in place to mitigate inconsistencies.
-     */
-    public Page(List<T> content, Pageable pageable, long total) {
-        super(content, pageable);
-        this.total = total;
+            @Override
+            public long getTotalElements() {
+                return 0;
+            }
+        };
     }
 
-    public static <T> Page<T> empty(Pageable pageable) {
-        return new Page<>(Collections.emptyList(), pageable, 0);
-    }
+    int getNumber();
 
+    int getSize();
 
-    public int getTotalPages() {
-        return getSize() == 0 ? 1 : (int) Math.ceil((double) total / (double) getSize());
-    }
+    long getTotalElements();
 
-    public long getTotalElements() {
-        return total;
-    }
-
-    public boolean hasNext() {
-        return getNumber() + 1 < getTotalPages();
-    }
-
-    public <U> Page<U> map(Function<? super T, ? extends U> converter) {
-        return new Page<>(getConvertedContent(converter), getPageable(), total);
-    }
-
-    public String toString() {
-
-        String contentType = "UNKNOWN";
-        List<T> content = getContent();
-
-        if ( content.size() > 0 ) {
-            contentType = content.get(0).getClass().getName();
-        }
-
-        return String.format("Page %s of %d containing %s instances", getNumber() + 1, getTotalPages(), contentType);
-    }
-
-    public boolean equals(Object obj) {
-
-        if ( this == obj ) {
-            return true;
-        }
-
-        if ( !( obj instanceof Page<?> ) ) {
-            return false;
-        }
-
-        Page<?> that = (Page<?>) obj;
-
-        return this.total == that.total && super.equals(obj);
-    }
-
-    public int hashCode() {
-
-        int result = 17;
-
-        result += 31 * (int) ( total ^ total >>> 32 );
-        result += 31 * super.hashCode();
-
-        return result;
-    }
 }

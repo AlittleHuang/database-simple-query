@@ -30,7 +30,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public List<T> getResultList() {
-        PrecompiledSqlForEntity<T> precompiledSql = getSqlBuilder().listResult();
+        PrecompiledSqlForEntity<T> precompiledSql = getSqlBuilder().listEntityResult();
         try ( Connection connection = config.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, precompiledSql);
             return toList(resultSet, precompiledSql.getSelections());
@@ -149,7 +149,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             return (List<X>) getResultList();
         }
 
-        PrecompiledSql precompiledSql = getSqlBuilder().listObjects();
+        PrecompiledSql precompiledSql = getSqlBuilder().listObjectResult();
         int columnsCount = selections.size();
         List<Object> result = new ArrayList<>();
         try {

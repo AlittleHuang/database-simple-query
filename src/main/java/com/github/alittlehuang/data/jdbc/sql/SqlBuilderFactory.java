@@ -8,9 +8,9 @@ public interface SqlBuilderFactory {
 
     interface SqlBuilder<T> {
 
-        PrecompiledSqlForEntity<T> listResult();
+        PrecompiledSqlForEntity<T> listEntityResult();
 
-        PrecompiledSql listObjects();
+        PrecompiledSql listObjectResult();
 
         PrecompiledSql count();
 

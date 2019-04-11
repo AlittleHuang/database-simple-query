@@ -1,6 +1,5 @@
-package com.github.alittlehuang.data.jdbc;
+package com.github.alittlehuang.data.jdbc.sql;
 
-import com.github.alittlehuang.data.jdbc.sql.*;
 import com.github.alittlehuang.data.metamodel.Attribute;
 import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.query.specification.*;
@@ -14,12 +13,13 @@ import java.util.*;
 
 import static javax.persistence.criteria.CriteriaBuilder.Trimspec;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuilder<T> {
-    Criteria<T> criteria;
-    EntityInformation<T, ?> rootEntityInfo;
-    List<Object> args = new ArrayList<>();
-    List<SelectedAttribute> selectedAttributes;
-    Map<JointKey, JoinAttr> joinAttrs;
+    private Criteria<T> criteria;
+    private EntityInformation<T, ?> rootEntityInfo;
+    private List<Object> args = new ArrayList<>();
+    private List<SelectedAttribute> selectedAttributes;
+    private Map<JointKey, JoinAttr> joinAttrs;
 
     StringBuilder sql;
 
@@ -29,7 +29,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
     }
 
     @Override
-    public PrecompiledSqlForEntity<T> listResult() {
+    public PrecompiledSqlForEntity<T> listEntityResult() {
         sql = new StringBuilder();
         appendSelectFromEntity();
         int index = sql.length();
@@ -42,7 +42,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
     }
 
     @Override
-    public PrecompiledSql listObjects() {
+    public PrecompiledSql listObjectResult() {
         sql = new StringBuilder();
         appendSelections();
         int index = sql.length();
@@ -208,7 +208,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
                 EntityInformation<?, ?> attrInfo = EntityInformation.getInstance(attr.getFieldType());
                 SelectedAttribute p = new SelectedAttribute(attr, null);
                 if ( names.length > 1 ) {
-                    for ( int i = 1; i < names.length; i++ ) {
+                    for (int i = 1; i < names.length; i++ ) {
                         attr = attrInfo.getAttribute(names[i]);
                         attrInfo = EntityInformation.getInstance(attr.getFieldType());
                         p = new SelectedAttribute(attr, p);
@@ -496,7 +496,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         if ( names.length > 1 ) {
             joinAttrs = joinAttrs == null ? new HashMap<>() : joinAttrs;
             JoinAttr joinAttr = null;
-            for ( int i = 1; i < names.length; i++ ) {
+            for (int i = 1; i < names.length; i++ ) {
                 JointKey key = new JointKey(joinAttr, attr);
                 if ( !joinAttrs.containsKey(key) ) {
                     joinAttrs.put(key, new JoinAttr(joinAttr, attr));

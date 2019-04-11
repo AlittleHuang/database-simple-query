@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-abstract class Chunk<T> implements Serializable {
+abstract class Chunk<T> implements Serializable, Page<T> {
 
     private static final long serialVersionUID = 867755909294344406L;
 
@@ -34,10 +34,12 @@ abstract class Chunk<T> implements Serializable {
         this.pageable = pageable;
     }
 
+    @Override
     public int getNumber() {
         return pageable.getPageNumber();
     }
 
+    @Override
     public int getSize() {
         return pageable.getPageSize();
     }

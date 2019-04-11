@@ -3,6 +3,7 @@ package com.github.alittlehuang.data.jpa.support;
 import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jpa.util.JpaHelper;
 import com.github.alittlehuang.data.query.page.Page;
+import com.github.alittlehuang.data.query.page.PageImpl;
 import com.github.alittlehuang.data.query.page.Pageable;
 import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.specification.*;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class JpaQueryStored<T> extends AbstractQueryStored<T> {
 
-    protected EntityManager entityManager;
+    private EntityManager entityManager;
 
     public JpaQueryStored(EntityManager entityManager, Class<T> type) {
         this.entityManager = entityManager;
@@ -91,7 +92,7 @@ public class JpaQueryStored<T> extends AbstractQueryStored<T> {
         setLock(typedQuery);
         List<T> resultList = typedQuery.getResultList();
 
-        return new Page<>(resultList, pageable, count);
+        return new PageImpl<>(resultList, pageable, count);
     }
 
     @Override
