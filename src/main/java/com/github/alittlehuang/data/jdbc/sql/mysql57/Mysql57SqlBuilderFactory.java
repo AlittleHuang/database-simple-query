@@ -14,7 +14,7 @@ public class Mysql57SqlBuilderFactory implements SqlBuilderFactory {
     }
 
     @Override
-    public <T> SqlBuilder<T> create(Criteria<T> criteria) {
+    public <T> SqlBuilder<T> createSqlBuild(Criteria<T> criteria) {
         return new Builder<>(criteria);
     }
 

@@ -40,7 +40,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
     }
 
     private SqlBuilderFactory.SqlBuilder<T> getSqlBuilder() {
-        return config.getSqlBuilderFactory().create(getCriteria());
+        return config.getSqlBuilderFactory().createSqlBuild(getCriteria());
     }
 
     private List<T> toList(ResultSet resultSet, List<SelectedAttribute> selectedAttributes) throws SQLException {

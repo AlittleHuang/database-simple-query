@@ -4,6 +4,6 @@ import com.github.alittlehuang.data.metamodel.EntityInformation;
 
 public interface EntityInformationFactory {
 
-    <T> EntityInformation<T, ?> get(Class<T> entityType);
+    <T> EntityInformation<T, ?> getEntityInfor(Class<T> entityType);
 
 }

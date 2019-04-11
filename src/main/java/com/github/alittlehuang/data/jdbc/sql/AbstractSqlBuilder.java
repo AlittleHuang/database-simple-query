@@ -567,7 +567,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
     }
 
     public <X> EntityInformation<X, ?> getEntityInformation(Class<X> clazz) {
-        EntityInformation<X, ?> infor = config.getEntityInformationFactory().get(clazz);
+        EntityInformation<X, ?> infor = config.getEntityInformationFactory().getEntityInfor(clazz);
         Assert.notNull(infor, "the type " + clazz + " is not an entity type");
         return infor;
     }

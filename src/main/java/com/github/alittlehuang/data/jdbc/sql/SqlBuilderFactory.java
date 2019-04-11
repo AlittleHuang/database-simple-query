@@ -4,7 +4,7 @@ import com.github.alittlehuang.data.query.specification.Criteria;
 
 public interface SqlBuilderFactory {
 
-    <T> SqlBuilder<T> create(Criteria<T> criteria);
+    <T> SqlBuilder<T> createSqlBuild(Criteria<T> criteria);
 
     interface SqlBuilder<T> {
 
