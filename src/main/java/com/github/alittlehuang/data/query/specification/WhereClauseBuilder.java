@@ -1,7 +1,5 @@
 package com.github.alittlehuang.data.query.specification;
 
-import com.github.alittlehuang.data.query.support.Expressions;
-
 import java.util.Collection;
 
 public interface WhereClauseBuilder<T, THIS extends WhereClauseBuilder<T, THIS>> {

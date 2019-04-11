@@ -1,6 +1,7 @@
 package com.github.alittlehuang.data.query.support;
 
 import com.github.alittlehuang.data.query.specification.Expression;
+import com.github.alittlehuang.data.query.specification.Expressions;
 
 public class SimpleExpression<T, R> implements Expressions<T, R> {
 

@@ -1,6 +1,7 @@
 package com.github.alittlehuang.data.query.support;
 
 import com.github.alittlehuang.data.query.specification.AttributePath;
+import com.github.alittlehuang.data.query.specification.Expressions;
 import com.github.alittlehuang.data.query.specification.FetchAttribute;
 import lombok.Setter;
 import lombok.experimental.Delegate;

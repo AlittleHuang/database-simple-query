@@ -2,6 +2,7 @@ package com.github.alittlehuang.data.query.support;
 
 import com.github.alittlehuang.data.query.specification.Direction;
 import com.github.alittlehuang.data.query.specification.Expression;
+import com.github.alittlehuang.data.query.specification.Expressions;
 import com.github.alittlehuang.data.query.specification.Orders;
 import lombok.Getter;
 import lombok.Setter;

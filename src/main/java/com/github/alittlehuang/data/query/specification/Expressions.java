@@ -1,7 +1,6 @@
-package com.github.alittlehuang.data.query.support;
+package com.github.alittlehuang.data.query.specification;
 
-import com.github.alittlehuang.data.query.specification.Expression;
-import com.github.alittlehuang.data.query.specification.Selection;
+import com.github.alittlehuang.data.query.support.SimpleExpression;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import java.util.ArrayList;
