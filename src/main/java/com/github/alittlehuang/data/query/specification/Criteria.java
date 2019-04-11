@@ -9,7 +9,7 @@ public interface Criteria<T> {
 
     List<? extends Selection<T>> getSelections();
 
-    List<? extends EntityAttribute<T>> getGroupings();
+    List<? extends AttributePath<T>> getGroupings();
 
     List<? extends Orders<T>> getOrders();
 

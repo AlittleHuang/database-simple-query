@@ -1,6 +1,6 @@
 package com.github.alittlehuang.data.query.specification;
 
-public interface EntityAttribute<T> {
+public interface AttributePath<T> {
 
     String[] getNames();
 

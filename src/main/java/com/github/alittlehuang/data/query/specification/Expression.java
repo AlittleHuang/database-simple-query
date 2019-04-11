@@ -1,6 +1,6 @@
 package com.github.alittlehuang.data.query.specification;
 
-public interface Expression<T> extends EntityAttribute<T> {
+public interface Expression<T> extends AttributePath<T> {
 
     Object[] EMPTY_ARGS = {};
 

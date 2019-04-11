@@ -500,7 +500,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         }
     }
 
-    protected void appendAttribute(EntityAttribute<T> attribute) {
+    protected void appendAttribute(AttributePath<T> attribute) {
         String[] names = attribute.getNames();
         appendAttribute(names, JoinType.LEFT);
     }
