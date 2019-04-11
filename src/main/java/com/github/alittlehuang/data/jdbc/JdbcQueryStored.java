@@ -1,11 +1,12 @@
-package com.github.alittlehuang.data.jdbc.support;
+package com.github.alittlehuang.data.jdbc;
 
-import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
-import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
-import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
-import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
-import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
+import com.github.alittlehuang.data.jdbc.sql.PrecompiledSql;
+import com.github.alittlehuang.data.jdbc.sql.PrecompiledSqlForEntity;
+import com.github.alittlehuang.data.jdbc.sql.SelectedAttribute;
+import com.github.alittlehuang.data.metamodel.Attribute;
+import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.query.page.Page;
+import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.support.AbstractQueryStored;
 import com.github.alittlehuang.data.util.JointKey;
 import org.slf4j.Logger;
@@ -59,16 +60,14 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
                 Attribute<Object, Object> attribute = selectedAttribute.getAttribute();
                 Class<Object> fieldType = attribute.getFieldType();
                 if ( val != null ) {
-                    Class<?> valType = val.getClass();
-                    if ( !fieldType.isAssignableFrom(valType) ) {
+                    if ( !fieldType.isInstance(val) ) {
+                        Class<?> valType = val.getClass();
                         Function<Object, Object> function = config.getTypeConverter(valType, fieldType);
                         if ( function != null ) {
                             val = function.apply(val);
                         } else {
-                            // logger.warn("missing converter from" + valType + " to " + fieldType);
-                            //val = TypeUtils.cast(val, fieldType, null);
-                            //noinspection UnnecessaryLocalVariable
-                            Class targetType = fieldType;//目标
+                            // noinspection UnnecessaryLocalVariable
+                            Class targetType = fieldType;
                             if ( targetType == Byte.class )
                                 val = resultSet.getByte(index);
                             else if ( targetType == Short.class )
@@ -141,7 +140,34 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public <X> List<X> getObjectList() {
-        return null;
+
+        List<? extends Selection<T>> selections = criteria.getSelections();
+        if ( selections == null || selections.isEmpty()) {
+            //noinspection unchecked
+            return (List<X>) getResultList();
+        }
+
+        PrecompiledSql precompiledSql = config.getSqlBuilder().ListObjects(getCriteria());
+        int columnsCount = selections.size();
+        List<Object> result = new ArrayList<>();
+        try {
+            ResultSet resultSet = getResultSet(config.getDataSource().getConnection(), precompiledSql);
+            while ( resultSet.next() ) {
+                if ( columnsCount == 1 ) {
+                    result.add(resultSet.getObject(1));
+                } else {
+                    Object[] row = new Object[columnsCount];
+                    for ( int i = 0; i < columnsCount; i++ ) {
+                        row[i] = resultSet.getObject(i + 1);
+                    }
+                    result.add(row);
+                }
+            }
+        } catch ( SQLException e ) {
+            throw new RuntimeException(e);
+        }
+        //noinspection unchecked
+        return (List<X>) result;
     }
 
     @Override
@@ -173,7 +199,13 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public boolean exists() {
-        return false;
+        PrecompiledSql precompiledSql = config.getSqlBuilder().exists(getCriteria());
+        try ( Connection connection = config.getDataSource().getConnection() ) {
+            ResultSet resultSet = getResultSet(connection, precompiledSql);
+            return resultSet.next();
+        } catch ( SQLException e ) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

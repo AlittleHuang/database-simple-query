@@ -23,8 +23,8 @@ public abstract class AbstractCriteriaBuilder<T, THIS extends CriteriaBuilder<T,
 
     @Override
     public THIS addSelect(String... paths) {
-        for (String path : paths) {
-            Selection<T> selection = cls -> paths;
+        for (String ignored : paths) {
+            Selection<T> selection = () -> paths;
             criteria.selections.add(selection);
         }
         return self();
@@ -42,8 +42,23 @@ public abstract class AbstractCriteriaBuilder<T, THIS extends CriteriaBuilder<T,
         Selection<T> selection = new Selection<T>() {
 
             @Override
-            public String[] getNames(Class<? extends T> cls) {
-                return expression.getNames(cls);
+            public String[] getNames() {
+                return expression.getNames();
+            }
+
+            @Override
+            public Object[] getArgs() {
+                return expression.getArgs();
+            }
+
+            @Override
+            public Expression<T> getSubexpression() {
+                return expression.getSubexpression();
+            }
+
+            @Override
+            public Function getFunction() {
+                return expression.getFunction();
             }
 
             @Override

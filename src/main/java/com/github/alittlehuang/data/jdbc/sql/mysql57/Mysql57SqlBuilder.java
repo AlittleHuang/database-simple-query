@@ -1,12 +1,13 @@
-package com.github.alittlehuang.data.jdbc.support.sql.mysql57;
+package com.github.alittlehuang.data.jdbc.sql.mysql57;
 
-import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
-import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
-import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSql;
-import com.github.alittlehuang.data.jdbc.support.sql.PrecompiledSqlForEntity;
-import com.github.alittlehuang.data.jdbc.support.sql.SelectedAttribute;
-import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
+import com.github.alittlehuang.data.metamodel.Attribute;
+import com.github.alittlehuang.data.metamodel.EntityInformation;
+import com.github.alittlehuang.data.jdbc.sql.PrecompiledSql;
+import com.github.alittlehuang.data.jdbc.sql.PrecompiledSqlForEntity;
+import com.github.alittlehuang.data.jdbc.sql.SelectedAttribute;
+import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
 import com.github.alittlehuang.data.query.specification.*;
+import com.github.alittlehuang.data.util.Assert;
 import com.github.alittlehuang.data.util.JointKey;
 
 import javax.persistence.LockModeType;
@@ -23,7 +24,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
 
     @Override
     public PrecompiledSql exists(Criteria<?> criteria) {
-        return null;
+        return new Builder<>(criteria).buildExists();
     }
 
     @Override
@@ -37,7 +38,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         if ( selections == null || selections.isEmpty() ) {
             throw new RuntimeException("the selections must not be empty");
         }
-        return null;
+        return new Builder<>(criteria).buildListObjects();
     }
 
     private static class Builder<T> {
@@ -60,12 +61,22 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             int index = sql.length();
             appendWhereClause();
             appendOrders();
+            insertJoin(index);
             appendLimit();
             appendLockMode();
-            if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
-                insertJoin(index);
-            }
             return new PrecompiledSqlForEntity<>(sql.toString(), args, selectedAttributes);
+        }
+
+        public PrecompiledSql buildListObjects() {
+            sql = new StringBuilder();
+            appendSelections();
+            int index = sql.length();
+            appendWhereClause();
+            appendOrders();
+            insertJoin(index);
+            appendLimit();
+            appendLockMode();
+            return new PrecompiledSql(sql.toString(), args);
         }
 
         PrecompiledSql buildCount() {
@@ -74,9 +85,21 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             appendFrom(rootEntityInfo);
             int index = sql.length();
             appendWhereClause();
-            if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
-                insertJoin(index);
-            }
+            insertJoin(index);
+            return new PrecompiledSql(sql.toString(), args);
+        }
+
+        public PrecompiledSql buildExists() {
+            sql = new StringBuilder();
+            sql.append("SELECT ");
+            appendRootTableAlias();
+            sql.append(".`").append(rootEntityInfo.getIdAttribute().getColumnName())
+                    .append("` ");
+            appendFrom(rootEntityInfo);
+            int index = sql.length();
+            appendWhereClause();
+            insertJoin(index);
+            sql.append(" LIMIT 1");
             return new PrecompiledSql(sql.toString(), args);
         }
 
@@ -135,11 +158,13 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void insertJoin(int index) {
-            StringBuilder join = new StringBuilder();
-            for ( JoinAttr value : joinAttrs.values() ) {
-                buildJoin(join, value);
+            if ( joinAttrs != null && !joinAttrs.isEmpty() ) {
+                StringBuilder join = new StringBuilder();
+                for ( JoinAttr value : joinAttrs.values() ) {
+                    buildJoin(join, value);
+                }
+                sql.insert(index, join);
             }
-            sql.insert(index, join);
         }
 
         private void buildJoin(StringBuilder sql, JoinAttr joinAttr) {
@@ -198,7 +223,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
             List<? extends FetchAttribute<T>> fetchList = criteria.getFetchAttributes();
             if ( fetchList != null && !fetchList.isEmpty() ) {
                 for ( FetchAttribute<T> fetch : fetchList ) {
-                    String[] names = fetch.getNames(rootEntityInfo.getJavaType());
+                    String[] names = fetch.getNames();
                     String[] tmp = new String[names.length + 1];
                     System.arraycopy(names, 0, tmp, 0, names.length);
 
@@ -218,6 +243,32 @@ public class Mysql57SqlBuilder implements SqlBuilder {
                         appendAttribute(tmp, fetch.getJoinType());
                         selectedAttributes.add(new SelectedAttribute(attribute, p));
                     }
+                }
+            }
+
+            sql.append(" ");
+            appendFrom(rootEntityInfo);
+        }
+
+        private void appendSelections() {
+            List<? extends Selection<T>> selections = criteria.getSelections();
+            Assert.state(selections != null && !selections.isEmpty(), "selections must not be empty");
+
+            sql.append("SELECT ");
+            boolean first = true;
+            for ( Selection<T> selection : selections ) {
+                if ( first ) {
+                    first = false;
+                } else {
+                    sql.append(",");
+                }
+                AggregateFunctions aggregate = selection.getAggregateFunctions();
+                if ( aggregate == null || aggregate == AggregateFunctions.NONE ) {
+                    appendExpression(selection);
+                } else {
+                    sql.append(aggregate).append("(");
+                    appendExpression(selection);
+                    sql.append(")");
                 }
             }
 
@@ -451,7 +502,7 @@ public class Mysql57SqlBuilder implements SqlBuilder {
         }
 
         private void appendAttribute(com.github.alittlehuang.data.query.specification.Attribute<T> attribute) {
-            String[] names = attribute.getNames(rootEntityInfo.getJavaType());
+            String[] names = attribute.getNames();
             appendAttribute(names, JoinType.LEFT);
         }
 

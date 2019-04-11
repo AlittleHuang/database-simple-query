@@ -1,11 +1,12 @@
 package com.github.alittlehuang.data.jpa.support;
 
-import com.github.alittlehuang.data.jdbc.metamodel.EntityInformation;
+import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.jpa.util.JpaHelper;
 import com.github.alittlehuang.data.query.page.Page;
 import com.github.alittlehuang.data.query.page.Pageable;
 import com.github.alittlehuang.data.query.specification.Selection;
 import com.github.alittlehuang.data.query.specification.*;
+import com.github.alittlehuang.data.query.support.AbstractQueryStored;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
@@ -17,10 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class JpaQueryStored<T> extends AbstractJpaStored<T> {
+public class JpaQueryStored<T> extends AbstractQueryStored<T> {
+
+    protected EntityManager entityManager;
 
     public JpaQueryStored(EntityManager entityManager, Class<T> type) {
-        super(entityManager, type);
+        this.entityManager = entityManager;
+        this.type = type;
     }
 
     @Override
@@ -103,7 +107,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
     @Override
     public boolean exists() {
         StoredData<Object> data = new StoredData<>(Object.class).initWhere().initGroupBy();
-        EntityInformation<T, ?> information = getJpaEntityInformation();
+        EntityInformation<T, ?> information = EntityInformation.getInstance(type);
         data.query.select(data.root.get(information.getIdAttribute().getFieldName()));
         return !entityManager.createQuery(data.query)
                 .setMaxResults(1)
@@ -150,7 +154,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
         private StoredData<R> initGroupBy() {
             if (!criteria.getGroupings().isEmpty()) {
                 List<Expression<?>> paths = criteria.getGroupings().stream()
-                        .map(it -> JpaHelper.getPath(root, it.getNames(type)))
+                        .map(it -> JpaHelper.getPath(root, it.getNames()))
                         .collect(Collectors.toList());
                 query.groupBy(paths);
             }
@@ -183,7 +187,7 @@ public class JpaQueryStored<T> extends AbstractJpaStored<T> {
             List<? extends FetchAttribute<T>> list = criteria.getFetchAttributes();
             for (FetchAttribute<T> attr : list) {
                 Fetch fetch = null;
-                for (String stringPath : attr.getNames(type)) {
+                for (String stringPath : attr.getNames()) {
                     if (fetch == null) {
                         fetch = root.fetch(stringPath, attr.getJoinType());
                     } else {

@@ -1,8 +1,7 @@
-package com.github.alittlehuang.data.jdbc.support;
+package com.github.alittlehuang.data.jdbc;
 
-import com.github.alittlehuang.data.jdbc.support.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
 import com.github.alittlehuang.data.util.JointKey;
-import lombok.Data;
 
 import javax.sql.DataSource;
 import java.util.Map;
@@ -25,7 +24,7 @@ public class Config {
         return typeConverterSet.get(new JointKey(srcType, targetType));
     }
 
-    public <T, U> void put(Class<T> srcType, Class<U> targetType, Function<T, U> converter) {
+    public <T, U> void register(Class<T> srcType, Class<U> targetType, Function<T, U> converter) {
         //noinspection unchecked
         typeConverterSet.put(new JointKey(srcType, targetType), (Function<Object, Object>) converter);
     }

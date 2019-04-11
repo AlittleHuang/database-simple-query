@@ -204,7 +204,7 @@ public class JpaHelper {
     }
 
     private static <T> Path<?> toPath(Root<T> root, Attribute<T> attribute) {
-        return getPath(root, attribute.getNames(root.getJavaType()));
+        return getPath(root, attribute.getNames());
     }
 
 }

@@ -1,4 +1,4 @@
-package com.github.alittlehuang.data.jdbc.metamodel;
+package com.github.alittlehuang.data.metamodel;
 
 import javax.persistence.*;
 import java.lang.annotation.Annotation;
@@ -23,6 +23,7 @@ public class Attribute<X, Y> {
     private final Column column;
     private final ManyToMany manyToMany;
     private final OneToOne oneToOne;
+    private final String columnName;
 
     public Attribute(Field field, Method getter, Method setter, Class<X> entityType) {
         this.field = field;
@@ -36,6 +37,7 @@ public class Attribute<X, Y> {
         this.column = getAnnotation(Column.class);
         this.manyToMany = getAnnotation(ManyToMany.class);
         this.oneToOne = getAnnotation(OneToOne.class);
+        this.columnName = initColumnName();
     }
 
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
@@ -90,13 +92,18 @@ public class Attribute<X, Y> {
         throw new RuntimeException();
     }
 
-    public String getColumnName() {
+    public String initColumnName() {
         Column column = getAnnotation(Column.class);
+        String columnName;
         if (column != null && column.name().length() != 0) {
-            return column.name();
+            columnName = column.name();
         } else {
-            return field.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+            columnName = field.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
         }
+        if ( columnName.startsWith("`") && columnName.endsWith("`") ) {
+            columnName = columnName.substring(1, columnName.length() - 1);
+        }
+        return columnName;
     }
 
     public String getFieldName() {
@@ -146,5 +153,9 @@ public class Attribute<X, Y> {
 
     public boolean isEntityType() {
         return getFieldType().getAnnotation(Entity.class) != null;
+    }
+
+    public String getColumnName() {
+        return columnName;
     }
 }

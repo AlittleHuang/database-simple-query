@@ -35,8 +35,8 @@ public class SimpleOrders<T> implements Orders<T> {
     }
 
     @Override
-    public String[] getNames(Class<? extends T> cls) {
-        return attribute.getNames(cls);
+    public String[] getNames() {
+        return attribute.getNames();
     }
 
 

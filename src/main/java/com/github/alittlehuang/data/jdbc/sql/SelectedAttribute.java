@@ -1,6 +1,6 @@
-package com.github.alittlehuang.data.jdbc.support.sql;
+package com.github.alittlehuang.data.jdbc.sql;
 
-import com.github.alittlehuang.data.jdbc.metamodel.Attribute;
+import com.github.alittlehuang.data.metamodel.Attribute;
 
 public class SelectedAttribute {
 

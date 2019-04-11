@@ -1,4 +1,4 @@
-package com.github.alittlehuang.data.jdbc.metamodel;
+package com.github.alittlehuang.data.metamodel;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -139,7 +139,11 @@ public class EntityInformation<T, ID> {
         if (table != null && table.name().length() > 0) {
             return table.name();
         }
-        return javaType.getSimpleName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+        String tableName = javaType.getSimpleName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+        if ( tableName.startsWith("`") && tableName.endsWith("`") ) {
+            tableName = tableName.substring(1, tableName.length() - 1);
+        }
+        return tableName;
     }
 
     private static Field getDeclaredField(Class<?> clazz, String name) {
