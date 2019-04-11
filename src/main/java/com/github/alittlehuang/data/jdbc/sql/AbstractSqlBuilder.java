@@ -1,5 +1,6 @@
 package com.github.alittlehuang.data.jdbc.sql;
 
+import com.github.alittlehuang.data.jdbc.JdbcQueryStoredConfig;
 import com.github.alittlehuang.data.metamodel.Attribute;
 import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.query.specification.*;
@@ -15,6 +16,7 @@ import static javax.persistence.criteria.CriteriaBuilder.Trimspec;
 
 @SuppressWarnings("WeakerAccess")
 public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuilder<T> {
+    private JdbcQueryStoredConfig config;
     private Criteria<T> criteria;
     private EntityInformation<T, ?> rootEntityInfo;
     private List<Object> args = new ArrayList<>();
@@ -23,9 +25,10 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
 
     StringBuilder sql;
 
-    public AbstractSqlBuilder(Criteria<T> criteria) {
-        rootEntityInfo = EntityInformation.getInstance(criteria.getJavaType());
+    public AbstractSqlBuilder(JdbcQueryStoredConfig config, Criteria<T> criteria) {
+        rootEntityInfo = getEntityInformation(criteria.getJavaType());
         this.criteria = criteria;
+        this.config = config;
     }
 
     @Override
@@ -205,12 +208,12 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
                 System.arraycopy(names, 0, tmp, 0, names.length);
 
                 Attribute<?, ?> attr = rootEntityInfo.getAttribute(names[0]);
-                EntityInformation<?, ?> attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                EntityInformation<?, ?> attrInfo = getEntityInformation(attr.getFieldType());
                 SelectedAttribute p = new SelectedAttribute(attr, null);
                 if ( names.length > 1 ) {
                     for (int i = 1; i < names.length; i++ ) {
                         attr = attrInfo.getAttribute(names[i]);
-                        attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                        attrInfo = getEntityInformation(attr.getFieldType());
                         p = new SelectedAttribute(attr, p);
                     }
                 }
@@ -342,8 +345,19 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         }
     }
 
+    private static Set<Class<?>> basic = new HashSet<>(Arrays.asList(
+            java.lang.Boolean.class,
+            java.lang.Character.class,
+            java.lang.Byte.class,
+            java.lang.Short.class,
+            java.lang.Integer.class,
+            java.lang.Long.class,
+            java.lang.Float.class,
+            java.lang.Double.class
+    ));
+    
     protected void appendSimpleParam(Object arg) {
-        if ( arg instanceof Number ) {
+        if (arg != null && basic.contains(arg.getClass())) {
             sql.append(arg);
         } else {
             sql.append("?");
@@ -486,7 +500,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         }
     }
 
-    protected void appendAttribute(com.github.alittlehuang.data.query.specification.Attribute<T> attribute) {
+    protected void appendAttribute(EntityAttribute<T> attribute) {
         String[] names = attribute.getNames();
         appendAttribute(names, JoinType.LEFT);
     }
@@ -504,7 +518,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
                 joinAttr = joinAttrs.get(key);
                 joinAttr.joinType = joinType;
 
-                EntityInformation attrInfo = EntityInformation.getInstance(attr.getFieldType());
+                EntityInformation attrInfo = getEntityInformation(attr.getFieldType());
                 attr = attrInfo.getAttribute(names[i]);
                 if ( !attr.isEntityType() ) {
                     joinAttr.appendAlias(sql);
@@ -552,6 +566,12 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         }
     }
 
+    public <X> EntityInformation<X, ?> getEntityInformation(Class<X> clazz) {
+        EntityInformation<X, ?> infor = config.getEntityInformationFactory().get(clazz);
+        Assert.notNull(infor, "the type " + clazz + " is not an entity type");
+        return infor;
+    }
+
     class JoinAttr {
         Attribute<?, ?> attribute;
         EntityInformation attrInfo;
@@ -563,7 +583,7 @@ public abstract class AbstractSqlBuilder<T> implements SqlBuilderFactory.SqlBuil
         public JoinAttr(JoinAttr parent, Attribute<?, ?> attribute) {
             this.parent = parent;
             this.attribute = attribute;
-            this.attrInfo = EntityInformation.getInstance(attribute.getFieldType());
+            this.attrInfo = getEntityInformation(attribute.getFieldType());
         }
 
         void appendAlias(StringBuilder sql) {
