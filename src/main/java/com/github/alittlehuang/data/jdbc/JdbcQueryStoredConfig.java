@@ -1,6 +1,7 @@
 package com.github.alittlehuang.data.jdbc;
 
-import com.github.alittlehuang.data.jdbc.sql.SqlBuilder;
+import com.github.alittlehuang.data.jdbc.sql.SqlBuilderFactory;
+import com.github.alittlehuang.data.jdbc.sql.mysql57.Mysql57SqlBuilderFactory;
 import com.github.alittlehuang.data.util.JointKey;
 
 import javax.sql.DataSource;
@@ -8,16 +9,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-public class Config {
+public class JdbcQueryStoredConfig {
 
-    private SqlBuilder sqlBuilder;
+    private SqlBuilderFactory sqlBuilderFactory;
     private DataSource dataSource;
     private Map<JointKey, Function<Object, Object>> typeConverterSet = new ConcurrentHashMap<>();
 
-
-    public Config(SqlBuilder sqlBuilder, DataSource dataSource) {
-        this.sqlBuilder = sqlBuilder;
+    public JdbcQueryStoredConfig(SqlBuilderFactory sqlBuilderFactory, DataSource dataSource) {
+        this.sqlBuilderFactory = sqlBuilderFactory;
         this.dataSource = dataSource;
+    }
+
+    public JdbcQueryStoredConfig(DataSource dataSource) {
+        this(new Mysql57SqlBuilderFactory(), dataSource);
     }
 
     Function<Object, Object> getTypeConverter(Class<?> srcType, Class<?> targetType) {
@@ -29,8 +33,8 @@ public class Config {
         typeConverterSet.put(new JointKey(srcType, targetType), (Function<Object, Object>) converter);
     }
 
-    public SqlBuilder getSqlBuilder() {
-        return sqlBuilder;
+    public SqlBuilderFactory getSqlBuilderFactory() {
+        return sqlBuilderFactory;
     }
 
     public DataSource getDataSource() {

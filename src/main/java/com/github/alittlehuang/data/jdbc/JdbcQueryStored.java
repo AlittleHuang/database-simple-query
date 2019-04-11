@@ -1,8 +1,6 @@
 package com.github.alittlehuang.data.jdbc;
 
-import com.github.alittlehuang.data.jdbc.sql.PrecompiledSql;
-import com.github.alittlehuang.data.jdbc.sql.PrecompiledSqlForEntity;
-import com.github.alittlehuang.data.jdbc.sql.SelectedAttribute;
+import com.github.alittlehuang.data.jdbc.sql.*;
 import com.github.alittlehuang.data.metamodel.Attribute;
 import com.github.alittlehuang.data.metamodel.EntityInformation;
 import com.github.alittlehuang.data.query.page.Page;
@@ -22,23 +20,27 @@ import java.util.function.Function;
 public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
     private static Logger logger = LoggerFactory.getLogger(JdbcQueryStored.class);
 
-    private Config config;
+    private JdbcQueryStoredConfig config;
     private Class<T> entityType;
 
-    public JdbcQueryStored(Config config, Class<T> entityType) {
+    public JdbcQueryStored(JdbcQueryStoredConfig config, Class<T> entityType) {
         this.config = config;
         this.entityType = entityType;
     }
 
     @Override
     public List<T> getResultList() {
-        PrecompiledSqlForEntity<T> precompiledSql = config.getSqlBuilder().listResult(getCriteria());
+        PrecompiledSqlForEntity<T> precompiledSql = getSqlBuilder().listResult();
         try ( Connection connection = config.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, precompiledSql);
             return toList(resultSet, precompiledSql.getSelections());
         } catch ( SQLException e ) {
             throw new RuntimeException(e);
         }
+    }
+
+    private SqlBuilderFactory.SqlBuilder<T> getSqlBuilder() {
+        return config.getSqlBuilderFactory().create(getCriteria());
     }
 
     private List<T> toList(ResultSet resultSet, List<SelectedAttribute> selectedAttributes) throws SQLException {
@@ -147,7 +149,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
             return (List<X>) getResultList();
         }
 
-        PrecompiledSql precompiledSql = config.getSqlBuilder().ListObjects(getCriteria());
+        PrecompiledSql precompiledSql = getSqlBuilder().listObjects();
         int columnsCount = selections.size();
         List<Object> result = new ArrayList<>();
         try {
@@ -182,7 +184,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public long count() {
-        PrecompiledSql count = config.getSqlBuilder().count(getCriteria());
+        PrecompiledSql count = getSqlBuilder().count();
 
         try ( Connection connection = config.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, count);
@@ -199,7 +201,7 @@ public class JdbcQueryStored<T> extends AbstractQueryStored<T> {
 
     @Override
     public boolean exists() {
-        PrecompiledSql precompiledSql = config.getSqlBuilder().exists(getCriteria());
+        PrecompiledSql precompiledSql = getSqlBuilder().exists();
         try ( Connection connection = config.getDataSource().getConnection() ) {
             ResultSet resultSet = getResultSet(connection, precompiledSql);
             return resultSet.next();
